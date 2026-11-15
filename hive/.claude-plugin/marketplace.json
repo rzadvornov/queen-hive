@@ -1,0 +1,11 @@
+{
+  "name": "hive-local",
+  "owner": { "name": "Roman Zadvornov" },
+  "plugins": [
+    {
+      "name": "haiku-hive",
+      "source": "./plugin",
+      "description": "The Hive: a Queen model directs Haiku worker bees."
+    }
+  ]
+}

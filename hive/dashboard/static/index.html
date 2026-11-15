@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hive Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐝</text></svg>">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#/live"><span aria-hidden="true">🐝</span> The Hive</a>
+  <nav id="nav">
+    <a href="#/live" data-view="live">Live</a>
+    <a href="#/runs" data-view="runs">Runs</a>
+    <a href="#/compare" data-view="compare">Compare</a>
+    <a href="#/projects" data-view="projects">Projects</a>
+    <a href="#/models" data-view="models">Models</a>
+  </nav>
+</header>
+<main id="app" aria-live="polite"></main>
+<script src="/static/app.js"></script>
+</body>
+</html>

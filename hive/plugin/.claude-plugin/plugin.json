@@ -1,0 +1,9 @@
+{
+  "name": "haiku-hive",
+  "displayName": "The Hive",
+  "version": "0.1.0",
+  "description": "A Queen model plans, briefs and verifies; Haiku worker bees build, scout and review.",
+  "author": { "name": "Roman Zadvornov" },
+  "license": "MIT",
+  "keywords": ["orchestration", "subagents", "haiku", "review"]
+}

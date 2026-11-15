@@ -218,7 +218,7 @@ def cmd_install_plugin(argv: list[str]) -> None:
     marketplace = PLUGIN_DIR.parent
     for cmd in ([claude, "plugin", "marketplace", "add", str(marketplace)],
                 [claude, "plugin", "install", "haiku-hive@hive-local"]):
-        print("$ " + " ".join(cmd))
+        print("$ " + " ".join(cmd), flush=True)
         subprocess.run(cmd, check=False)
     print("In Claude Code: /haiku-hive:hive <goal>, /haiku-hive:waggle or /haiku-hive:retro")
 

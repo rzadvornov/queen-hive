@@ -135,7 +135,7 @@ The exit code is 0 when the job finished and acceptance passed (or there was no 
 | `hive init [DIR] [--no-ai] [--force]` | Draft or redraft a project's profile. `--no-ai` only reads manifest files. |
 | `hive models [--check]` | Catalog, prices and your access. |
 | `hive stats [DIR] [--last]` | Run history: cost, pass rate and average saving. `--last` reprints the last full report. |
-| `hive dashboard [--port 7777] [--no-open]` | The web dashboard (§9). |
+| `hive dashboard [up\|down\|status] [--port 7777] [--no-open] [--foreground]` | The web dashboard (§9). It runs as a background process; `hive dashboard down` stops it. |
 | `hive doctor` | Versions, plugin validation and warnings. |
 | `hive install-plugin` | Installs the plugin into Claude Code (§10). |
 
@@ -191,8 +191,12 @@ All of this is saved in `~/.hive/projects/<p>/runs/<id>/run.json`, with an event
 ## 9. The dashboard
 
 ```bash
-hive dashboard          # opens http://localhost:7777
+hive dashboard          # starts it in the background and opens http://localhost:7777
+hive dashboard status   # is it running, and where
+hive dashboard down     # stops it
 ```
+
+The dashboard keeps running after you close the terminal, until `hive dashboard down`. Running `hive dashboard` again while it's up just reopens the browser. Its pid and port are in `~/.hive/dashboard.json` and its output goes to `~/.hive/dashboard.log`. To run it in the terminal instead (Ctrl-C stops it), use `hive dashboard --foreground`.
 
 | Page | Shows |
 |---|---|

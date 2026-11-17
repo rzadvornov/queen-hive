@@ -186,9 +186,26 @@ def cmd_stats(argv: list[str]) -> None:
 
 
 def cmd_dashboard(argv: list[str]) -> None:
-    from hive.dashboard.server import main as serve
+    from hive.dashboard import process
 
-    serve(argv)
+    parser = argparse.ArgumentParser(prog="hive dashboard", description="Local dashboard for hive runs, in a background process.")
+    parser.add_argument("action", nargs="?", choices=["up", "down", "status"], default="up",
+                        help="up starts it (default), down stops it, status shows whether it runs.")
+    parser.add_argument("--port", type=int, default=7777)
+    parser.add_argument("--no-open", action="store_true", help="don't open the browser.")
+    parser.add_argument("--foreground", action="store_true", help="run in this terminal until Ctrl-C instead.")
+    args = parser.parse_args(argv)
+    if args.action == "down":
+        process.down()
+    elif args.action == "status":
+        process.status()
+    elif args.foreground:
+        from hive.dashboard.server import serve
+
+        print(f"🐝 hive dashboard on http://localhost:{args.port} (Ctrl-C to stop)")
+        serve(args.port, open_browser=not args.no_open)
+    else:
+        process.up(args.port, open_browser=not args.no_open)
 
 
 def cmd_doctor(argv: list[str]) -> None:

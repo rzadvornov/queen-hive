@@ -53,3 +53,25 @@ def test_runs_live_and_export(tmp_path):
     projects = client.get("/api/projects").json()
     assert projects[0]["root"] == str(root.resolve()) and "profile.md" in projects[0]["files"]
     assert any(m["key"] == "opus-5.5" for m in client.get("/api/models").json()["models"])
+
+
+def test_background_up_and_down(capsys):
+    import socket
+
+    from hive.dashboard import process
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    process.up(port, open_browser=False)
+    info = process.running()
+    try:
+        assert info and info["port"] == port and process._port_open(port)
+        process.up(port, open_browser=False)                    # second start reuses the running one
+        assert process.running()["pid"] == info["pid"]
+    finally:
+        process.down()
+    assert process.running() is None and not process._port_open(port)
+    assert not process.pid_path().exists()
+    out = capsys.readouterr().out
+    assert "already running" in out and "stopped" in out

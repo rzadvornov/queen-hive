@@ -219,15 +219,16 @@ def create_app() -> Starlette:
     ])
 
 
-def main(argv: list[str] | None = None) -> None:
+def serve(port: int, open_browser: bool = False) -> None:
+    """Run the server in this process until Ctrl-C or SIGTERM."""
     import uvicorn
 
-    parser = argparse.ArgumentParser(prog="hive dashboard", description="Local dashboard for hive runs.")
+    if open_browser:
+        webbrowser.open(f"http://localhost:{port}")
+    uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="warning")
+
+
+if __name__ == "__main__":  # the background process started by `hive dashboard`
+    parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=7777)
-    parser.add_argument("--no-open", action="store_true", help="don't open the browser.")
-    args = parser.parse_args(argv)
-    url = f"http://localhost:{args.port}"
-    print(f"🐝 hive dashboard on {url} (Ctrl-C to stop)")
-    if not args.no_open:
-        webbrowser.open(url)
-    uvicorn.run(create_app(), host="127.0.0.1", port=args.port, log_level="warning")
+    serve(parser.parse_args().port)

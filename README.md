@@ -71,7 +71,8 @@ Use WSL:
 ```bash
 hive models --check          # which Queens your login can use
 hive "Explain how this project is structured" -d ~/some/project
-hive dashboard               # live view, history, comparisons
+hive dashboard               # live view, history, comparisons (runs in the background)
+hive dashboard down          # stop the dashboard
 ```
 
 The Hive signs in with your Claude Code login or `ANTHROPIC_API_KEY`.

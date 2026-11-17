@@ -129,3 +129,22 @@ def test_settings_confirm_then_configure(tmp_path, monkeypatch):
     n = len(asked)
     cli._choose(args(queen="opus-5.5", workers="haiku-5.5", mode="ask"))
     assert len(asked) == n                                           # everything given: nothing asked
+
+
+def test_ask_folder(tmp_path, monkeypatch):
+    from hive import memory, ui
+
+    known, other = tmp_path / "api", tmp_path / "shop"
+    known.mkdir()
+    other.mkdir()
+    memory.ensure_project(known)
+    monkeypatch.setattr(ui, "interactive", lambda: True)
+    answers = iter(["1", "", str(tmp_path / "missing"), str(other)])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(answers))
+
+    assert folders.known_projects() == [known.resolve()]
+    assert folders.ask_folder(tmp_path) == known.resolve()          # a known project by number
+    assert folders.ask_folder(tmp_path) == tmp_path.resolve()       # Enter keeps the default
+    assert folders.ask_folder(tmp_path) == other.resolve()          # not a folder: asks again, then a path
+    monkeypatch.setattr(ui, "interactive", lambda: False)
+    assert folders.ask_folder(tmp_path) == tmp_path.resolve()       # no terminal: no question

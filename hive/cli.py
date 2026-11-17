@@ -38,13 +38,14 @@ def _job_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--no-waggle", action="store_true", help="don't run the retro (waggle) after each finished job.")
 
 
-def _choose(args, goal: str = ""):
+def _choose(args, goal: str = "", ask_folder: bool = False):
     """Resolve folders, Queen, workers and mode, asking only for what wasn't given."""
     from hive import folders as folders_mod, init, ui
     from hive.models import choose_queen, choose_workers
     from hive.modes import DEFAULT_MODE, choose_mode
 
-    folders = folders_mod.resolve(goal, args.dir, Path.cwd())
+    default = folders_mod.ask_folder(Path.cwd()) if ask_folder and not args.dir else Path.cwd()
+    folders = folders_mod.resolve(goal, args.dir, default)
     if not args.no_init:
         asyncio.run(init.run(folders[0]))
     state = memory.load_state()
@@ -148,7 +149,7 @@ def cmd_chat(argv: list[str], first_prompt: str | None = None, prog: str = "hive
     if first_prompt is not None:
         parser.add_argument("note", nargs="?", default="", help="what to focus the retro on (optional).")
     args = parser.parse_args(argv)
-    folders, queen, workers, mode = _choose(args)
+    folders, queen, workers, mode = _choose(args, ask_folder=True)
     job = Job(goal="", folders=folders, queen=queen, workers=workers, mode=mode, review=args.review,
               lenses=_split(args.lenses), budget=args.budget, verbose=args.verbose, waggle=not args.no_waggle)
     if first_prompt is not None:

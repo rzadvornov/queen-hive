@@ -131,7 +131,7 @@ The exit code is 0 when the job finished and acceptance passed (or there was no 
 
 | Command | What it does |
 |---|---|
-| `hive chat [-d DIR] [--queen] [--mode]` | A conversation with the Queen. Every message is a goal or a follow-up. In-chat commands: `/mode`, `/queen`, `/dirs PATH`, `/cost`, `/waggle` (or `/retro`), `/waggle on\|off`, `/help`, `/exit`. |
+| `hive chat [-d DIR] [--queen] [--mode]` | A conversation with the Queen. Without `-d` it first asks which folder to work on: pick a project the hive already knows by number, type a path, or press Enter for the current folder. Every message is a goal or a follow-up. In-chat commands: `/mode`, `/queen`, `/dirs PATH`, `/cost`, `/waggle` (or `/retro`), `/waggle on\|off`, `/help`, `/exit`. |
 | `hive waggle` / `hive retro` | Starts a chat focused on the project's last run: what went wrong, plus proposed minimal edits to the rules or memory. Nothing changes until you approve an item. |
 | `--no-waggle` (on `hive "goal"` and `hive chat`) | Skips the retro that otherwise runs after each finished job. |
 | `hive init [DIR] [--no-ai] [--force]` | Draft or redraft a project's profile. `--no-ai` only reads manifest files. |

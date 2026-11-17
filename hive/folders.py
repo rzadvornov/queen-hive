@@ -36,6 +36,45 @@ def resolve(goal: str, extra: list[Path], default: Path) -> list[Path]:
     return folders or [default.resolve()]
 
 
+def known_projects() -> list[Path]:
+    """Folders the hive has memory for, most recently used first."""
+    from hive import memory
+
+    roots = []
+    for pdir in sorted(memory.all_projects(), key=lambda p: (p / "runs").stat().st_mtime if (p / "runs").exists() else 0,
+                       reverse=True):
+        try:
+            root = Path((pdir / "root.txt").read_text().strip())
+        except OSError:
+            continue
+        if root.is_dir():
+            roots.append(root)
+    return roots
+
+
+def ask_folder(default: Path) -> Path:
+    """Ask which folder to work on: a known project by number, or any path. Enter picks the default."""
+    from hive import ui
+
+    default = default.resolve()
+    if not ui.interactive():
+        return default
+    known = known_projects()
+    print("📂 Which folder should the hive work on?")
+    for n, root in enumerate(known, 1):
+        print(f"  {n}) {root}")
+    while True:
+        answer = input(f"{'Number or path' if known else 'Path'} [Enter = {default}]: ").strip()
+        if not answer:
+            return default
+        if answer.isdigit() and 1 <= int(answer) <= len(known):
+            return known[int(answer) - 1]
+        folder = Path(answer.strip("'\"")).expanduser().resolve()
+        if folder.is_dir():
+            return folder
+        print(f"   not a folder: {folder}")
+
+
 def git(root: Path, *args: str) -> str | None:
     try:
         out = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=30)

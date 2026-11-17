@@ -113,18 +113,31 @@ async def check_access(keys: list[str] | None = None) -> dict[str, dict]:
     return {m.key: access(state)[m.key] for m in chosen}
 
 
-def choose_queen(default: str | None = None) -> Model:
-    """Menu of Queen candidates; models known to be unavailable are shown but can't be picked."""
-    from hive import ui
-
-    state = memory.load_state()
+def _menu(candidates: list[Model], state: dict) -> list[tuple[str, str, bool]]:
+    """Menu options; models known to be unavailable are shown but can't be picked."""
     options = []
-    for m in queens():
+    for m in candidates:
         available = is_available(state, m)
         price = f"${m.input:g}/${m.output:g}"
         flag = " (no access)" if available is False else " (not checked)" if available is None else ""
         options.append((m.key, f"{m.name:18} {m.id:18} {price:9} {m.note}{flag}", available is not False))
-    return get(ui.choose("👑 Choose your Queen:", options, default or state.get("last_queen") or DEFAULT_QUEEN))
+    return options
+
+
+def choose_queen(default: str | None = None) -> Model:
+    from hive import ui
+
+    state = memory.load_state()
+    return get(ui.choose("👑 Choose your Queen:", _menu(queens(), state), default or state.get("last_queen") or DEFAULT_QUEEN))
+
+
+def choose_workers(default: str | None = None) -> Model:
+    """Any model can be a bee; Haiku is the cheap default the hive is tuned for."""
+    from hive import ui
+
+    state = memory.load_state()
+    return get(ui.choose("🐝 Choose the bee model:", _menu(list(CATALOG), state),
+                         default or state.get("workers") or DEFAULT_WORKERS))
 
 
 def mark_unavailable(model: Model, error: str) -> None:

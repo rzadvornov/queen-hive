@@ -40,7 +40,7 @@ you ──goal──▶ 👑 Queen ──briefs──▶ 🐝 builders/scouts �
 
 ## 2. Install and sign in
 
-Requirements: Python 3.10+ and macOS, Linux or Windows via WSL. Claude Code is optional; the SDK ships its own copy of the CLI. Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
+Requirements: Python 3.10+ and macOS or Linux. Claude Code is optional; the SDK ships its own copy of the CLI. Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
 
 **Sign in** works the same way as Claude Code: your existing Claude Code login (subscription) or `ANTHROPIC_API_KEY`.
 - With a subscription, costs are the API-equivalent price of the same tokens.
@@ -70,9 +70,8 @@ hive "Add a combo discount: coffee + croissant makes the croissant half price"
 ```
 
 1. **First use of a folder:** a Haiku scout reads the project and drafts its profile. Review it: **[Y]es** saves it, **[e]dit** opens it in `$EDITOR`, and **[n]o** keeps an empty template. Check **Commands** and **Protected paths** in particular. Folders called `acceptance/` are suggested as protected automatically.
-2. **Choose the Queen.** Enter keeps the last one.
-3. **Choose the mode** (plan, auto or ask). Enter keeps the last one.
-4. Watch the hive work:
+2. **Confirm the settings:** `Run with 👑 Claude Opus 5.5 · 🐝 Claude Haiku 5.5 bees · 🛡 mode plan? [Y/n]`. These are your last choices, or the defaults on first use. Enter runs with them. **n** opens a menu for each: the Queen, the bee model and the mode (plan, auto or ask). Your answers become the new defaults.
+3. Watch the hive work:
 
 ```
 📂 access granted: /Users/you/projects/shop
@@ -115,9 +114,9 @@ The hive never commits. Review the changes with `git diff` and commit them yours
 | Flag | Meaning |
 |---|---|
 | `-d, --dir DIR` | Grant access to a folder (repeatable). Folders named in the goal (`~/x`, `/abs`, `./x`, quoted paths) are granted automatically. The first folder is the working directory. With no folder at all, the current directory is used. |
-| `--queen KEY` | `fable-5.1`, `opus-5.5`, `sonnet-5.5`, `opus-5`, `opus-4.8`, … Skips the question. |
-| `--workers KEY` | Bee model, `haiku-5.5` by default. Any catalog model works, e.g. `sonnet-5.5` for harder builds. |
-| `--mode plan\|auto\|ask` | Autonomy mode. Skips the question. |
+| `--queen KEY` | `fable-5.1`, `opus-5.5`, `sonnet-5.5`, `opus-5`, `opus-4.8`, … Not asked about. |
+| `--workers KEY` | Bee model, `haiku-5.5` by default. Any catalog model works, e.g. `sonnet-5.5` for harder builds. Not asked about. |
+| `--mode plan\|auto\|ask` | Autonomy mode. Not asked about. With `--queen`, `--workers` and `--mode` all given, nothing is asked. |
 | `--review full\|light\|off` | `full` (default) runs every lens that fits the task, `light` runs only goal + tests, and `off` skips the review (the Queen still verifies every brief). |
 | `--lenses a,b,c` | Exact lenses: `goal, correctness, tests, arch, perf, rules, security` for code, `facts, goal` for research, `goal, scope` for files. |
 | `--done "CMD"` | Acceptance command that must pass (repeatable). The hive runs it itself after the job, and it decides ✅/❌. |

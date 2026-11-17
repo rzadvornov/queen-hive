@@ -27,9 +27,9 @@ run `hive <command> -h` for details."""
 def _job_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-d", "--dir", type=Path, action="append", default=[],
                         help="folder to grant access to (repeatable). Default: folders named in the goal, else the current folder.")
-    parser.add_argument("--queen", help=f"Queen model ({', '.join(m.key for m in models.queens())}). Asked if omitted.")
-    parser.add_argument("--workers", default=None, help=f"worker bee model (default {models.DEFAULT_WORKERS}).")
-    parser.add_argument("--mode", choices=list(MODES), help="autonomy mode. Asked if omitted.")
+    parser.add_argument("--queen", help=f"Queen model ({', '.join(m.key for m in models.queens())}). Default: the last one.")
+    parser.add_argument("--workers", default=None, help=f"worker bee model. Default: the last one, else {models.DEFAULT_WORKERS}.")
+    parser.add_argument("--mode", choices=list(MODES), help="autonomy mode. Default: the last one.")
     parser.add_argument("--review", choices=["full", "light", "off"], default="full", help="independent review level (default full).")
     parser.add_argument("--lenses", help="comma-separated review lenses, e.g. goal,correctness,tests,arch,perf,rules,security")
     parser.add_argument("--budget", type=float, default=5.0, help="hard spending cap in USD per run (default 5).")
@@ -40,20 +40,27 @@ def _job_args(parser: argparse.ArgumentParser) -> None:
 
 def _choose(args, goal: str = ""):
     """Resolve folders, Queen, workers and mode, asking only for what wasn't given."""
-    from hive import folders as folders_mod, init
-    from hive.models import choose_queen
-    from hive.modes import choose_mode
+    from hive import folders as folders_mod, init, ui
+    from hive.models import choose_queen, choose_workers
+    from hive.modes import DEFAULT_MODE, choose_mode
 
     folders = folders_mod.resolve(goal, args.dir, Path.cwd())
     if not args.no_init:
         asyncio.run(init.run(folders[0]))
     state = memory.load_state()
-    queen = models.get(args.queen) if args.queen else choose_queen()
+    queen = models.get(args.queen or state.get("last_queen") or models.DEFAULT_QUEEN)
+    workers = models.get(args.workers or state.get("workers") or models.DEFAULT_WORKERS)
+    mode = args.mode or state.get("last_mode") or DEFAULT_MODE
+    if not args.queen and models.is_available(state, queen) is False:
+        queen = next((m for m in models.queens() if models.is_available(state, m) is not False), queen)
+    asked = not (args.queen and args.workers and args.mode)
+    if asked and not ui.confirm(f"Run with 👑 {queen.name} · 🐝 {workers.name} bees · 🛡  mode {mode}?"):
+        queen = queen if args.queen else choose_queen(queen.key)
+        workers = workers if args.workers else choose_workers(workers.key)
+        mode = args.mode or choose_mode(mode)
     if models.is_available(state, queen) is False:
         print(f"⚠️  {queen.name} was not available last time it was checked (`hive models` re-checks).")
-    workers = models.get(args.workers or state.get("workers") or models.DEFAULT_WORKERS)
-    mode = args.mode or choose_mode()
-    state.update(last_queen=queen.key, last_mode=mode)
+    state.update(last_queen=queen.key, workers=workers.key, last_mode=mode)
     memory.save_state(state)
     return folders, queen, workers, mode
 

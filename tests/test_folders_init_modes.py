@@ -80,7 +80,7 @@ def test_waggle_runs_after_a_job(tmp_path, monkeypatch):
     monkeypatch.setattr(hive.session, "run_job", lambda job: _record("sess-1"))
     monkeypatch.setattr(hive.chat, "chat", lambda job, prompt, resume=None: calls.append((prompt, resume)) or _noop())
     monkeypatch.setattr(ui, "interactive", lambda: True)
-    base = ["goal", "-d", str(tmp_path), "--queen", "sonnet-5.5", "--mode", "auto", "--no-init"]
+    base = ["goal", "-d", str(tmp_path), "--queen", "sonnet-5.5", "--workers", "haiku-5.5", "--mode", "auto", "--no-init"]
 
     with pytest.raises(SystemExit):
         cli.cmd_run(base)
@@ -102,3 +102,30 @@ def _record(session_id):
 
 async def _noop():
     return None
+
+
+def test_settings_confirm_then_configure(tmp_path, monkeypatch):
+    import argparse
+
+    from hive import cli, memory, models, ui
+
+    def args(**kw):
+        return argparse.Namespace(dir=[tmp_path], no_init=True, **{"queen": None, "workers": None, "mode": None, **kw})
+
+    asked, picks = [], {}
+    monkeypatch.setattr(ui, "confirm", lambda q, default=True: asked.append(q) or picks["confirm"])
+    monkeypatch.setattr(ui, "choose", lambda title, options, default=None: next((v for k, v in picks.items() if k in title), default))
+
+    picks["confirm"] = True                                          # yes: last choices, else the defaults
+    _, queen, workers, mode = cli._choose(args())
+    assert (queen.key, workers.key, mode) == (models.DEFAULT_QUEEN, models.DEFAULT_WORKERS, "plan")
+    assert "Claude Opus 5.5" in asked[-1] and "Claude Haiku 5.5" in asked[-1]
+
+    picks.update({"confirm": False, "Queen": "sonnet-5.5", "bee model": "sonnet-5.5", "mode": "auto"})   # no: configure each
+    _, queen, workers, mode = cli._choose(args())
+    assert (queen.key, workers.key, mode) == ("sonnet-5.5", "sonnet-5.5", "auto")
+    assert memory.load_state()["workers"] == "sonnet-5.5"           # remembered as the new defaults
+
+    n = len(asked)
+    cli._choose(args(queen="opus-5.5", workers="haiku-5.5", mode="ask"))
+    assert len(asked) == n                                           # everything given: nothing asked

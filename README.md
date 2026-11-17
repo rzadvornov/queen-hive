@@ -20,13 +20,13 @@ hive "Fix the failing tests in ~/projects/api"
 ## Requirements
 
 - **Python 3.10 or newer**
-- **macOS, Linux, or Windows through WSL.** Native Windows isn't supported: the plugin's protection hook runs `python3`, and the shell checks assume a POSIX shell.
+- **macOS or Linux**
 - A Claude Code login or an `ANTHROPIC_API_KEY`. You don't need to install Claude Code, because the SDK ships its own copy of the CLI.
 
 ### Check your Python version
 
 ```bash
-python3 --version        # macOS, Linux, WSL
+python3 --version
 ```
 
 You need `Python 3.10.x` or higher. If you see `command not found` or a version below 3.10 (macOS ships 3.9 with the Xcode tools), install a newer Python:
@@ -34,7 +34,7 @@ You need `Python 3.10.x` or higher. If you see `command not found` or a version 
 | OS | Install a newer Python |
 |---|---|
 | macOS | `brew install python@3.12`, or the installer from [python.org](https://www.python.org/downloads/) |
-| Ubuntu / Debian / WSL | `sudo apt update && sudo apt install python3.12 python3.12-venv`. On older releases, add the `deadsnakes` PPA first: `sudo add-apt-repository ppa:deadsnakes/ppa` |
+| Ubuntu / Debian | `sudo apt update && sudo apt install python3.12 python3.12-venv`. On older releases, add the `deadsnakes` PPA first: `sudo add-apt-repository ppa:deadsnakes/ppa` |
 | Fedora | `sudo dnf install python3.12` |
 | Any OS | [pyenv](https://github.com/pyenv/pyenv): `pyenv install 3.12` then `pyenv local 3.12` in the repo |
 
@@ -57,14 +57,6 @@ Put `hive` on your PATH, either with a symlink or by adding the venv's `bin` fol
 ln -s ~/the-hive/.venv/bin/hive /usr/local/bin/hive                      # macOS (may need sudo)
 mkdir -p ~/.local/bin && ln -s ~/the-hive/.venv/bin/hive ~/.local/bin/hive  # Linux, if ~/.local/bin is on PATH
 ```
-
-### Windows
-
-Use WSL:
-
-1. In PowerShell as administrator, run `wsl --install`, then restart. This installs Ubuntu.
-2. Open the **Ubuntu** terminal and follow the macOS and Linux steps above inside it.
-3. Keep your projects inside WSL (for example `~/projects`). The hive can reach Windows folders through `/mnt/c/...`, but it's much slower there.
 
 ### First run
 

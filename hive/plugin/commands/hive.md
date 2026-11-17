@@ -12,4 +12,6 @@ It prints the memory folder path and creates it if it is missing.
 
 Before you start the change, record the start point for the review. In a git repo, run `git rev-parse HEAD` and `git status --short`.
 
+When the job is finished and you have written the `hive-summary` block, run the `haiku-hive:waggle` skill for this job, unless the user asked to skip the retro (for example "no waggle").
+
 Goal: $ARGUMENTS

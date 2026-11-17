@@ -28,7 +28,7 @@
 | **Independent review** | After the work is accepted, several reviewer bees check it in parallel, one *lens* each. They see only the goal, the change set and the project memory, **not** the builders' reports. The Queen triages every finding: false positives are dismissed with a reason, real defects get fix briefs, and opinions come to you as suggestions. At most 2 review rounds. |
 | **Protected paths** | Files the hive must never change, typically your acceptance tests. A hook blocks every edit to them; reading and running them is fine. |
 | **Project memory** | `~/.hive/projects/<folder>-<hash>/`: `profile.md` (stack, commands, protected paths), `progress.md`, `decisions.md`, `known-issues.md` and `runs/`. **Nothing is written into your project.** |
-| **Waggle** | A retro after a session (alias `retro`). It proposes small edits to rules or memory based on what went wrong, and applies only the ones you approve. |
+| **Waggle** | A retro after a job (alias `retro`). It runs automatically when a job finishes, proposes small edits to rules or memory based on what went wrong, and applies only the ones you approve. |
 
 What a run looks like:
 
@@ -104,6 +104,8 @@ review: lenses goal, correctness, tests, arch, perf, rules, security · confirme
 🐝 Hive $1.00 vs Claude Opus 5.5 alone $3.05 (estimate, same tokens) → saved 67%
 ```
 
+Then the **waggle** starts: the Queen continues the same session and lists what went wrong in this job, with one proposed edit per item. Type which items to apply (for example `apply 1 and 3`), then `/exit`. Nothing changes without your approval. `--no-waggle` skips it, and it's skipped automatically when there's no terminal to answer in (scripts, CI).
+
 The hive never commits. Review the changes with `git diff` and commit them yourself.
 
 ## 4. Commands and flags
@@ -130,8 +132,9 @@ The exit code is 0 when the job finished and acceptance passed (or there was no 
 
 | Command | What it does |
 |---|---|
-| `hive chat [-d DIR] [--queen] [--mode]` | A conversation with the Queen. Every message is a goal or a follow-up. In-chat commands: `/mode`, `/queen`, `/dirs PATH`, `/cost`, `/waggle` (or `/retro`), `/help`, `/exit`. |
+| `hive chat [-d DIR] [--queen] [--mode]` | A conversation with the Queen. Every message is a goal or a follow-up. In-chat commands: `/mode`, `/queen`, `/dirs PATH`, `/cost`, `/waggle` (or `/retro`), `/waggle on\|off`, `/help`, `/exit`. |
 | `hive waggle` / `hive retro` | Starts a chat focused on the project's last run: what went wrong, plus proposed minimal edits to the rules or memory. Nothing changes until you approve an item. |
+| `--no-waggle` (on `hive "goal"` and `hive chat`) | Skips the retro that otherwise runs after each finished job. |
 | `hive init [DIR] [--no-ai] [--force]` | Draft or redraft a project's profile. `--no-ai` only reads manifest files. |
 | `hive models [--check]` | Catalog, prices and your access. |
 | `hive stats [DIR] [--last]` | Run history: cost, pass rate and average saving. `--last` reprints the last full report. |
@@ -223,7 +226,7 @@ Then, in any Claude Code session:
 | Command | Effect |
 |---|---|
 | `/haiku-hive:hive <goal>` | The current session becomes the Queen and follows the same rules and memory. The Queen model is your session's model (`/model` to change it). |
-| `/haiku-hive:waggle` or `/haiku-hive:retro` | A retro of the current session. |
+| `/haiku-hive:waggle` or `/haiku-hive:retro` | A retro of the current session. `/haiku-hive:hive` runs it by itself when the job finishes, unless you ask it not to ("no waggle"). |
 
 Inside Claude Code, permissions follow Claude Code's own settings, so there's no hive mode question. The protection hook is active there too.
 

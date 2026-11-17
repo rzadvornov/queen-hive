@@ -85,7 +85,7 @@ The Hive signs in with your Claude Code login or `ANTHROPIC_API_KEY`.
 - **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
 - **Independent review:** Haiku reviewers check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security). They don't see the builders' reports.
 - **Protected paths:** for example your acceptance tests. A hook blocks any edit to them.
-- **Memory outside your project:** kept in `~/.hive/projects/…`. `hive waggle` (alias `retro`) proposes rule fixes after a session.
+- **Memory outside your project:** kept in `~/.hive/projects/…`. After each job, a retro (`waggle`) proposes rule fixes and applies only those you approve. Skip it with `--no-waggle`.
 - **Statistics:** tokens and cost per stage. Each job is compared with single models, either estimated or, with `--compare`, as real side-by-side runs.
 
 📖 **Full guide: [docs/GUIDE.md](docs/GUIDE.md)**

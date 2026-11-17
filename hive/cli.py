@@ -35,6 +35,7 @@ def _job_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--budget", type=float, default=5.0, help="hard spending cap in USD per run (default 5).")
     parser.add_argument("-v", "--verbose", action="store_true", help="show every bee message and tool call.")
     parser.add_argument("--no-init", action="store_true", help="don't draft a project profile on first use.")
+    parser.add_argument("--no-waggle", action="store_true", help="don't run the retro (waggle) after each finished job.")
 
 
 def _choose(args, goal: str = ""):
@@ -81,9 +82,27 @@ def cmd_run(argv: list[str]) -> None:
         if not args.yes and not _confirm("   run the comparison?"):
             compare = []
     job = Job(goal=args.goal, folders=folders, queen=queen, workers=workers, mode=mode, review=args.review,
-              lenses=_split(args.lenses), done=args.done, budget=args.budget, compare=compare, verbose=args.verbose)
+              lenses=_split(args.lenses), done=args.done, budget=args.budget, compare=compare, verbose=args.verbose,
+              waggle=not args.no_waggle)
     record = asyncio.run(run_job(job))
+    if job.waggle:
+        _waggle_after(job, record)
     sys.exit(0 if record["acceptance"]["passed"] is not False and record["status"] != "failed" else 1)
+
+
+def _waggle_after(job, record: dict) -> None:
+    """The retro after a one-shot job: resume the job's session so the Queen sees what happened."""
+    from hive import ui
+    from hive.chat import chat
+    from hive.session import WAGGLE_PROMPT
+
+    if not record.get("session_id"):
+        return
+    if not ui.interactive():
+        print("waggle skipped: no terminal to approve edits. Run `hive waggle` later, or pass --no-waggle.")
+        return
+    print("\n🐝 waggle: a retro of this job. Approve the edits you want, then /exit. (--no-waggle skips this)")
+    asyncio.run(chat(job, WAGGLE_PROMPT, resume=record["session_id"]))
 
 
 def _compare_keys(value: str | None) -> list[str]:
@@ -124,7 +143,7 @@ def cmd_chat(argv: list[str], first_prompt: str | None = None, prog: str = "hive
     args = parser.parse_args(argv)
     folders, queen, workers, mode = _choose(args)
     job = Job(goal="", folders=folders, queen=queen, workers=workers, mode=mode, review=args.review,
-              lenses=_split(args.lenses), budget=args.budget, verbose=args.verbose)
+              lenses=_split(args.lenses), budget=args.budget, verbose=args.verbose, waggle=not args.no_waggle)
     if first_prompt is not None:
         first_prompt = _waggle_prompt(folders[0], getattr(args, "note", ""))
     asyncio.run(chat(job, first_prompt))

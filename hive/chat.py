@@ -11,7 +11,7 @@ from hive.folders import start_point
 from hive.models import choose_queen
 from hive.modes import MODES, Policy, choose_mode
 from hive.render import EventLog, Tracker
-from hive.session import Job, build_options, build_record, converse, new_run_dir, plugin_for, queen_prompt
+from hive.session import WAGGLE_PROMPT, Job, build_options, build_record, converse, new_run_dir, plugin_for, queen_prompt
 
 HELP = """commands:
   /mode [plan|auto|ask]   change the autonomy mode
@@ -19,6 +19,7 @@ HELP = """commands:
   /dirs PATH              grant access to another folder
   /cost                   cost of this chat so far
   /waggle  or  /retro     session retro with proposed rule and memory edits
+  /waggle on|off          run the retro after each job (default on)
   /help                   this help
   /exit                   leave (Ctrl-D works too)
 anything else is a goal or a follow-up for the Queen."""
@@ -71,6 +72,9 @@ class ChatSession:
         log.emit("run_end", status=record["status"], cost_usd=record["hive"]["cost_usd"],
                  passed=record["acceptance"]["passed"], record=record["path"])
         stats.print_report(record)
+        if self.job.waggle:
+            print("\n🐝 waggle: a retro of this job. Approve the edits you want. (/waggle off turns this off)")
+            await self.turn(WAGGLE_PROMPT)
 
     async def command(self, line: str) -> bool:
         """Handle a /command. Returns False to leave the chat."""
@@ -102,15 +106,19 @@ class ChatSession:
                 print(f"📂 access granted: {folder}")
         elif name == "cost":
             print(f"this chat so far: ${self.total_cost:.3f}")
+        elif name in ("waggle", "retro") and arg in ("on", "off"):
+            self.job.waggle = arg == "on"
+            print(f"waggle after each job: {arg}")
         elif name in ("waggle", "retro"):
-            await self.turn("/haiku-hive:waggle " + arg)
+            await self.turn(f"{WAGGLE_PROMPT} {arg}".strip())
         else:
             print(f"unknown command /{name}. Type /help.")
         return True
 
 
-async def chat(job: Job, first_prompt: str | None = None) -> None:
+async def chat(job: Job, first_prompt: str | None = None, resume: str | None = None) -> None:
     session = ChatSession(job)
+    session.session_id = resume
     run_dir = new_run_dir(session.pdir)
     session.start = start_point(job.folders[0], run_dir)
     for folder in job.folders:

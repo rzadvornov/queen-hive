@@ -43,6 +43,10 @@ class Job:
     budget: float | None = 5.0
     compare: list[str] = field(default_factory=list)
     verbose: bool = False
+    waggle: bool = True   # run a retro after each finished job
+
+
+WAGGLE_PROMPT = "/haiku-hive:waggle"
 
 
 def plugin_for(workers: models.Model) -> Path:
@@ -162,6 +166,7 @@ def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: Sta
         "workers": {"key": job.workers.key, "id": job.workers.id, "name": job.workers.name},
         "start_point": start.to_dict() if start else None,
         "summary": summary,
+        "session_id": tracker.result.session_id if tracker.result else None,
         "status": (summary or {}).get("status") or ("failed" if hive_data["is_error"] else "done"),
         "answer": verify.strip_summary(tracker.last_queen_text),
         "hive": hive_data,

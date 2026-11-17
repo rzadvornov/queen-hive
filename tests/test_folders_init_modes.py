@@ -1,6 +1,7 @@
 import asyncio
 import json
 
+import pytest
 from claude_agent_sdk import PermissionResultAllow, PermissionResultDeny
 
 from hive import folders, init
@@ -68,3 +69,36 @@ def test_policy_decisions(tmp_path, monkeypatch):
     assert isinstance(bash, PermissionResultDeny)          # nobody at the keyboard to approve
     plan = asyncio.run(Policy("plan", [tmp_path]).can_use_tool("ExitPlanMode", {"plan": "p"}, None))
     assert isinstance(plan, PermissionResultDeny) and plan.interrupt
+
+
+def test_waggle_runs_after_a_job(tmp_path, monkeypatch):
+    import hive.chat
+    import hive.session
+    from hive import cli, ui
+
+    calls = []
+    monkeypatch.setattr(hive.session, "run_job", lambda job: _record("sess-1"))
+    monkeypatch.setattr(hive.chat, "chat", lambda job, prompt, resume=None: calls.append((prompt, resume)) or _noop())
+    monkeypatch.setattr(ui, "interactive", lambda: True)
+    base = ["goal", "-d", str(tmp_path), "--queen", "sonnet-5.5", "--mode", "auto", "--no-init"]
+
+    with pytest.raises(SystemExit):
+        cli.cmd_run(base)
+    assert calls == [("/haiku-hive:waggle", "sess-1")]             # resumes the job's own session
+
+    with pytest.raises(SystemExit):
+        cli.cmd_run([*base, "--no-waggle"])
+    monkeypatch.setattr(ui, "interactive", lambda: False)
+    with pytest.raises(SystemExit):
+        cli.cmd_run(base)
+    assert len(calls) == 1                                          # off by flag, and without a terminal
+
+
+def _record(session_id):
+    async def run():
+        return {"session_id": session_id, "acceptance": {"passed": True}, "status": "done"}
+    return run()
+
+
+async def _noop():
+    return None

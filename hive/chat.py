@@ -38,6 +38,7 @@ class ChatSession:
         self.policy: Policy | None = None
         self.total_cost = 0.0
         self.start = None
+        self.last_was_waggle = False
 
     async def connect(self) -> None:
         if self.client:
@@ -50,6 +51,8 @@ class ChatSession:
         await self.client.connect()
 
     async def turn(self, prompt: str) -> None:
+        is_waggle = prompt.startswith(WAGGLE_PROMPT)
+        follows_waggle, self.last_was_waggle = self.last_was_waggle, is_waggle
         run_dir = new_run_dir(self.pdir)
         log = EventLog(run_dir / "events.jsonl")
         started = time.time()
@@ -62,7 +65,7 @@ class ChatSession:
             self.total_cost += tracker.result.total_cost_usd or 0
 
         summary = verify.parse_summary(tracker.last_queen_text)
-        if summary is None:   # a plain answer, not a job
+        if summary is None or is_waggle:   # a plain answer or a retro, not a job
             return
         cmds = verify.acceptance_commands([], summary, memory.commands(self.pdir))
         results = verify.run_checks(cmds, self.job.folders[0]) if cmds else []
@@ -72,7 +75,7 @@ class ChatSession:
         log.emit("run_end", status=record["status"], cost_usd=record["hive"]["cost_usd"],
                  passed=record["acceptance"]["passed"], record=record["path"])
         stats.print_report(record)
-        if self.job.waggle:
+        if self.job.waggle and not follows_waggle:   # not after applying a retro's edits
             print("\n🐝 waggle: a retro of this job. Approve the edits you want. (/waggle off turns this off)")
             await self.turn(WAGGLE_PROMPT)
 

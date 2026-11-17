@@ -12,3 +12,4 @@ Like the waggle dance, share with the hive what this session taught.
    Show each edit as **before** and **after**.
 3. Propose only what actually happened. No edits "just in case".
 4. Change nothing until the user approves a specific item. Then apply exactly that item.
+5. End your message after the list and wait for the user's answer. The retro and applying approved items are not jobs: no briefs, no review and **no `hive-summary` block**.

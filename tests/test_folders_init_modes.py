@@ -148,3 +148,26 @@ def test_ask_folder(tmp_path, monkeypatch):
     assert folders.ask_folder(tmp_path) == other.resolve()          # not a folder: asks again, then a path
     monkeypatch.setattr(ui, "interactive", lambda: False)
     assert folders.ask_folder(tmp_path) == tmp_path.resolve()       # no terminal: no question
+
+
+def test_waggle_does_not_loop(tmp_path, monkeypatch):
+    import hive.chat
+    from hive import models
+    from hive.session import Job
+
+    prompts = []
+
+    async def converse(client, prompt, tracker):           # the Queen ends every turn with a hive-summary block
+        prompts.append(prompt)
+        tracker.last_queen_text = 'Done.\n```hive-summary\n{"status": "done"}\n```'
+
+    monkeypatch.setattr(hive.chat, "converse", converse)
+    job = Job(goal="", folders=[tmp_path], queen=models.get("sonnet-5.5"), workers=models.get("haiku-5.5"), mode="auto")
+    session = hive.chat.ChatSession(job)
+
+    asyncio.run(session.turn("add a feature"))
+    assert prompts == ["add a feature", "/haiku-hive:waggle"]      # one retro after the job, then back to the user
+    asyncio.run(session.turn("apply 1"))
+    assert prompts[-1] == "apply 1" and len(prompts) == 3          # applying the retro's edits starts no new retro
+    asyncio.run(session.turn("next goal"))
+    assert prompts[-2:] == ["next goal", "/haiku-hive:waggle"]     # the next real job gets its retro

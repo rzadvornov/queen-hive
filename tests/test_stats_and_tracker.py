@@ -68,7 +68,7 @@ def test_tracker_stages_returns_and_dedupe():
     assert t.tokens_by_stage()["build"].input == 100          # duplicate usage counted once
     assert t.tokens_by_stage()["queen"].input == 200
     assert t.checks == [{"command": "npm test", "ok": False}]
-    assert stats.weekly(t.rate_limits) == {"reported": True, "type": "seven_day", "now": 0.8, "delta": None, "resets_at": None}
+    assert t.rate_limits[0]["type"] == "seven_day" and t.rate_limits[0]["utilization"] == 0.8
 
 
 def test_summary_and_acceptance_priority():
@@ -94,9 +94,10 @@ def test_report_prints(capsys, tmp_path):
                  "by_stage": {"queen": {"tokens": Tokens(800, 100).to_dict(), "cost_usd_est": 0.04}}},
         "acceptance": {"commands": ["npm test"], "results": [{"command": "npm test", "ok": True}], "passed": True},
         "estimates": stats.estimates(Tokens(1000, 200, 5000, 300).to_dict(), ["opus-5.5", "sonnet-5.5"]),
-        "compare": [], "weekly": {"reported": False}, "summary": {"review": {"lenses": ["goal"], "confirmed": 1}},
+        "compare": [], "summary": {"review": {"lenses": ["goal"], "confirmed": 1}},
         "path": str(tmp_path / "run.json"),
     }
     stats.print_report(record)
     out = capsys.readouterr().out
     assert "🐝 Hive" in out and "Claude Opus 5.5 alone (estimate)" in out and "acceptance ✅" in out and "saved" in out
+    assert "weekly" not in out

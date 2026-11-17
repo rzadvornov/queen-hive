@@ -40,19 +40,11 @@ you ──goal──▶ 👑 Queen ──briefs──▶ 🐝 builders/scouts �
 
 ## 2. Install and sign in
 
-Requirements: Python 3.10+ and macOS or Linux. Claude Code is optional; the SDK ships its own copy of the CLI.
-
-```bash
-cd ~/the-hive
-python3 -m venv .venv
-.venv/bin/pip install -e .
-# put `hive` on your PATH, for example:
-ln -s ~/the-hive/.venv/bin/hive /usr/local/bin/hive
-```
+Requirements: Python 3.10+ and macOS, Linux or Windows via WSL. Claude Code is optional; the SDK ships its own copy of the CLI. Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
 
 **Sign in** works the same way as Claude Code: your existing Claude Code login (subscription) or `ANTHROPIC_API_KEY`.
-- With a subscription, the hive shows **weekly-limit** usage.
-- With an API key, it shows real dollars.
+- With a subscription, costs are the API-equivalent price of the same tokens.
+- With an API key, they are real dollars.
 
 Check which Queens you can use:
 
@@ -108,7 +100,6 @@ variant                                       passed   tokens in/out   cache r/w
 ≈  Claude Opus 5.5 alone (estimate)                                                    $3.05
 acceptance ✅ $ node --test acceptance/combo.spec.js
 acceptance ✅ $ npm test
-weekly limit: 82% used (+2.0% this job)
 review: lenses goal, correctness, tests, arch, perf, rules, security · confirmed 0 · fixed 0 · dismissed 6 · open 0
 🐝 Hive $1.00 vs Claude Opus 5.5 alone $3.05 (estimate, same tokens) → saved 67%
 ```
@@ -189,7 +180,6 @@ In every mode, edits outside the granted folders are refused (`ask` asks you ins
 
 - **tokens in/out and cache r/w:** exact per-model totals from Claude Code, split into stages: queen, scout, build, fix and review. Stage figures are scaled to the exact totals, and stage costs are marked ≈.
 - **cost:** with an API key, the real charge. With a subscription, the **API-equivalent** cost: what the same tokens would cost on the API.
-- **weekly limit:** from Claude Code's rate-limit events. **Limitation:** these events are only sent when the usage status changes (for example when you pass a warning threshold), so you may see *not reported*. When two readings arrive during a job, the report shows `+X% this job`.
 - **≈ Model alone (estimate):** the hive's own tokens repriced at that model's price. It's free and instant, but rough: a model working alone uses a different number of tokens.
 - **⚖️ Model alone (`--compare`):** real runs. The folder is copied before the hive starts. Each model does the whole job alone, without subagents, with the same goal, budget, protected paths and acceptance commands. You get real tokens, cost, time and ✅/❌. The diffs are kept in the run folder (`compare-<model>.diff`) and the copies are deleted.
 - **saved X%:** the hive against the Queen model alone, using the measured run if there is one, otherwise the estimate.
@@ -206,7 +196,7 @@ hive dashboard          # opens http://localhost:7777
 
 | Page | Shows |
 |---|---|
-| **Live** | The running job, wherever it was started (CLI, chat or plugin): the Queen's latest message, each brief as a card (status, return count, Done when, and the full brief and report), the review lenses, checks, cost and the weekly-limit gauge. Updates in real time. |
+| **Live** | The running job, wherever it was started (CLI, chat or plugin): the Queen's latest message, each brief as a card (status, return count, Done when, and the full brief and report), the review lenses, checks and cost. Updates in real time. |
 | **Runs** | Every run across projects, filterable by project, Queen and result. Click one for its full timeline. |
 | **Run page** | The bee tree, a comparison bar chart (hive vs ⚖️ measured and ≈ estimated models), tokens and cost by stage, acceptance results, review counts, timeline, and **Export as HTML**, a single offline file you can share. |
 | **Compare** | Cost per run against "Queen alone" over time, and per-Queen averages (cost, pass rate, saving). |
@@ -264,9 +254,6 @@ Run `hive doctor`. The plugin must validate. Make sure no `CLAUDE_CODE_SUBAGENT_
 
 **A Queen shows ✗ in the menu**
 Your login can't use that model. Run `hive models --check` to re-check, for example after a plan change.
-
-**"weekly limit: not reported"**
-Claude Code sends usage only when the status changes, and API-key logins have no weekly limit. See §8.
 
 **The Queen asked me something after 3 returns**
 That's the designed stop. The brief kept failing. Read the error she shows, then clarify the goal or fix the environment (missing dependency, wrong test command in the profile).

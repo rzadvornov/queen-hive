@@ -46,7 +46,7 @@ function bars(rows, { format = usd, legend = null } = {}) {
 // --- event log → run state ------------------------------------------------------
 
 function reconstruct(events) {
-  const run = { start: null, briefs: new Map(), order: [], checks: [], queen: [], rate: [], cost: null, acceptance: [], end: null, timeline: [] };
+  const run = { start: null, briefs: new Map(), order: [], checks: [], queen: [], cost: null, acceptance: [], end: null, timeline: [] };
   for (const e of events) {
     switch (e.kind) {
       case "run_start": run.start = e; break;
@@ -65,7 +65,6 @@ function reconstruct(events) {
       case "bee_done": { const b = run.briefs.get(e.id); if (b && e.status !== "completed") b.status = e.status; break; }
       case "check": run.checks.push(e); run.timeline.push({ ts: e.ts, text: `👑 🔍 <code>${esc(e.command.slice(0, 120))}</code> ${e.ok ? "✅" : "❌"}` }); break;
       case "queen_text": run.queen.push(e.text); break;
-      case "rate_limit": run.rate.push(e); break;
       case "turn_end": run.cost = e.cost_usd; break;
       case "acceptance": run.acceptance.push(e); break;
       case "run_end": run.end = e; run.timeline.push({ ts: e.ts, text: `🍯 finished: ${esc(e.status)}` }); break;
@@ -101,17 +100,6 @@ function runTree(run) {
   return `<div class="panel queen"><div class="stage-title">${STAGE_NAMES.queen}</div>
       <div class="answer">${esc(lastQueen || "planning…")}</div></div>
     ${groups || '<p class="muted">No bees dispatched yet.</p>'}`;
-}
-
-function weekly(run, record) {
-  const week = (record?.weekly) || (() => {
-    const w = run.rate.filter((r) => (r.type || "").startsWith("seven_day") && r.utilization != null);
-    return w.length ? { reported: true, now: w[w.length - 1].utilization } : { reported: false };
-  })();
-  if (!week.reported) return `<div class="tile"><div class="k">Weekly limit</div><div class="v muted" style="font-size:15px">not reported</div></div>`;
-  return `<div class="tile"><div class="k">Weekly limit</div><div class="v">${Math.round(week.now * 100)}%</div>
-    <div class="gauge"><div style="width:${Math.min(100, week.now * 100)}%"></div></div>
-    ${week.delta != null ? `<div class="muted" style="font-size:12px">+${(week.delta * 100).toFixed(1)}% this job</div>` : ""}</div>`;
 }
 
 function statsSection(record) {
@@ -165,7 +153,6 @@ function renderRun(data, { live = false } = {}) {
       <div class="tile"><div class="k">Cost</div><div class="v">${usd(cost)}</div></div>
       <div class="tile"><div class="k">Briefs</div><div class="v">${run.order.length}</div></div>
       <div class="tile"><div class="k">Checks</div><div class="v">${run.checks.filter((c) => c.ok).length}/${run.checks.length}</div></div>
-      ${weekly(run, record)}
     </div>
     ${runTree(run)}
     ${record ? statsSection(record) : ""}

@@ -10,16 +10,6 @@ from hive.pricing import Tokens
 from hive.render import Tracker
 
 
-def weekly(rate_limits: list[dict]) -> dict:
-    """Weekly-limit usage from rate-limit snapshots. The SDK reports them only on status changes."""
-    week = [r for r in rate_limits if r.get("type") in ("seven_day", "seven_day_opus") and r.get("utilization") is not None]
-    if not week:
-        return {"reported": False}
-    first, last = week[0]["utilization"], week[-1]["utilization"]
-    return {"reported": True, "type": week[-1]["type"], "now": last,
-            "delta": (last - first) if len(week) > 1 else None, "resets_at": week[-1].get("resets_at")}
-
-
 def _ratio(exact: Tokens, seen: Tokens) -> Tokens:
     def r(a: int, b: int) -> float:
         return a / b if b else 1.0
@@ -117,11 +107,6 @@ def _ok(value: bool | None) -> str:
 
 def print_report(record: dict) -> None:
     hive = record["hive"]
-    week = record.get("weekly", {})
-    week_txt = "not reported"
-    if week.get("reported"):
-        week_txt = f"{week['now']:.0%} used" + (f" (+{week['delta']:.1%} this job)" if week.get("delta") is not None else "")
-
     rows = [("variant", "passed", "tokens in/out", "cache r/w", "cost", "time")]
     t = hive["tokens"]
     rows.append((f"🐝 Hive ({record['queen']['name']} + {record['workers']['name']})", _ok(record["acceptance"]["passed"]),
@@ -154,7 +139,6 @@ def print_report(record: dict) -> None:
             print(f"acceptance {_ok(res['ok'])} $ {res['command']}")
     else:
         print("acceptance – no acceptance command (use --done \"CMD\" or set `test:` in the profile)")
-    print(f"weekly limit: {week_txt}")
     review = (record.get("summary") or {}).get("review") or {}
     if review:
         print(f"review: lenses {', '.join(review.get('lenses', [])) or '–'} · confirmed {review.get('confirmed', 0)} · "

@@ -167,7 +167,6 @@ def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: Sta
         "hive": hive_data,
         "acceptance": {"commands": acceptance_cmds, "results": results, "passed": verify.passed(results)},
         "rate_limits": tracker.rate_limits,
-        "weekly": stats.weekly(tracker.rate_limits),
         "estimates": stats.estimates(hive_data["tokens"], estimate_keys),
         "compare": compared,
         "prices_as_of": models.PRICES_AS_OF,

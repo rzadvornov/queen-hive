@@ -209,7 +209,7 @@ def cmd_stats(argv: list[str]) -> None:
         else:
             print("No hive runs yet.")
         return
-    stats.print_history(args.folder.resolve() if args.folder else None)
+    stats.print_history(args.folder.expanduser().resolve() if args.folder else None)
 
 
 def cmd_dashboard(argv: list[str]) -> None:

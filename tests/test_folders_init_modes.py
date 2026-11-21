@@ -178,3 +178,17 @@ def test_waggle_does_not_loop_and_may_edit_the_hive(tmp_path, monkeypatch):
     assert isinstance(asyncio.run(session.policy.can_use_tool("Edit", rules, None)), PermissionResultDeny)
     session.policy.retro = True
     assert isinstance(asyncio.run(session.policy.can_use_tool("Edit", rules, None)), PermissionResultAllow)
+
+
+def test_tilde_paths_are_expanded(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    from hive import memory
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / "Desktop" / "app").mkdir(parents=True)
+    real = tmp_path / "Desktop" / "app"
+    assert memory.project_dir("~/Desktop/app") == memory.project_dir(real)      # same project either way
+    assert folders.resolve("", [Path("~/Desktop/app")], tmp_path) == [real.resolve()]
+    pdir = asyncio.run(init.run(Path("~/Desktop/app"), use_ai=False))
+    assert pdir == memory.project_dir(real) and not memory.profile_is_blank(pdir)

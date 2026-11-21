@@ -148,7 +148,7 @@ def _edit(text: str) -> str:
 
 async def run(root: Path, use_ai: bool = True, force: bool = False) -> Path:
     """Create or refresh the profile for root. Returns the memory folder."""
-    root = root.resolve()
+    root = root.expanduser().resolve()
     pdir = memory.ensure_project(root)
     if not force and not memory.profile_is_blank(pdir):
         return pdir

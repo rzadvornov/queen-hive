@@ -40,7 +40,7 @@ you ──goal──▶ 👑 Queen ──briefs──▶ 🐝 builders/scouts �
 
 ## 2. Install and sign in
 
-Requirements: Python 3.10+ and macOS or Linux. Every hive session runs in Claude Code; installing it is optional, because the SDK ships its own copy. Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
+Requirements: Python 3.10+ and macOS or Linux. Every hive session runs in Claude Code, so install it, or install the hive with its own copy (`pip install -e ".[bundled]"`). Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
 
 **Sign in** works the same way as Claude Code: your existing Claude Code login (subscription) or `ANTHROPIC_API_KEY`.
 - With a subscription, costs are the API-equivalent price of the same tokens.
@@ -108,7 +108,7 @@ The hive never commits. Review the changes with `git diff` and commit them yours
 | `--mode plan\|auto\|ask` | Autonomy mode. Not asked about. With `--queen`, `--workers` and `--mode` all given, nothing is asked. |
 | `--review full\|light\|off` | `full` (default) runs every lens that fits the task, `light` runs only goal + tests, and `off` skips the review (the Queen still verifies every brief). |
 | `--lenses a,b,c` | Exact lenses: `goal, correctness, tests, arch, perf, rules, security` for code, `facts, goal` for research, `goal, scope` for files. |
-| `--done "CMD"` | Acceptance command that must pass (repeatable). The hive runs it itself after the job, and it decides ✅/❌. Without it, the hive runs the Queen's final checks plus the profile's `test` command. |
+| `--done "CMD"` | Acceptance command that must pass (repeatable). The hive runs it itself after the job, and it decides ✅/❌. Without it, the hive runs the Queen's final checks plus the profile's `test` command. The Queen's checks need your approval in `ask` mode or with `--sandbox` (README → Safety). |
 | `--compare [MODELS]` | Also redo the job with single models alone, in copies of the folder. The default is `sonnet-5.5,opus-4.8,opus-5.5`, and `all` means every available Queen. Asks for confirmation first (`--yes` skips that). |
 | `--headless` | Run without Claude Code's interface and stop at the end. This is the default when there's no terminal. |
 | `--budget USD` | Hard cap for a headless run, 5 by default. Each `--compare` model gets the same cap. Claude Code has no cap for interactive sessions. |
@@ -175,7 +175,7 @@ In every mode, edits outside the granted folders are refused (`ask` asks you ins
 - **tokens in/out and cache r/w:** exact per-model totals from Claude Code, split into stages: queen, scout, build, fix and review. Stage figures are scaled to the exact totals, and stage costs are marked ≈.
 - **cost:** with an API key, the real charge. With a subscription, the **API-equivalent** cost: what the same tokens would cost on the API.
 - **≈ Model alone (estimate):** the hive's own tokens repriced at that model's price. It's free and instant, but rough: a model working alone uses a different number of tokens.
-- **⚖️ Model alone (`--compare`):** real runs. The folder is copied before the hive starts. Each model does the whole job alone, without subagents, with the same goal, budget, protected paths and acceptance commands. You get real tokens, cost, time and ✅/❌. The diffs are kept in the run folder (`compare-<model>.diff`) and the copies are deleted.
+- **⚖️ Model alone (`--compare`):** real runs. The folder is copied before the hive starts, as copy-on-write clones where the file system supports them (APFS, Btrfs, XFS), so even large folders copy in about a second. Links leading out of the copy are removed. Each model does the whole job alone, without subagents, with the same goal, budget, protected paths and acceptance commands. You get real tokens, cost, time and ✅/❌. The diffs are kept in the run folder (`compare-<model>.diff`) and the copies are deleted.
 - **saved X%:** the hive against the Queen model alone, using the measured run if there is one, otherwise the estimate.
 
 Be honest with yourself about the numbers. On tiny tasks the hive's overhead (planning, verification, review) can cost **more** than one model alone. One real example: adding a `power()` function cost $0.19 with the hive and $0.10 with Sonnet alone. The hive pays off on real features, where its parallel cheap bees and independent review replace expensive single-model work.
@@ -264,7 +264,8 @@ Things to know:
 - **Read-only bees:** a hook denies every file edit by scouts and reviewers, and every shell write outside the temp folders.
 - **Protected paths:** the hook blocks file tools and shell writes (`>`, `rm`, `mv`, `cp` to the path, `tee`, `sed -i`, `git checkout/restore` …) on protected paths. The shell check is a careful parse, not a sandbox.
 - **Git:** work in a git repo. The hive never commits, and the start point of each run is recorded, so `git diff` shows exactly what it did.
-- **Data:** memory and run logs stay in `~/.hive`. The dashboard is local only.
+- **Data:** memory and run logs stay in `~/.hive`. The dashboard is local only: it answers only requests to `localhost` and POSTs from its own pages.
+- **Memory changes:** the report after a session lists every line the Queen added to the project memory (📝). Those lines become part of her instructions next time.
 
 ## 13. Troubleshooting and FAQ
 

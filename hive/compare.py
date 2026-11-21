@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -17,6 +18,7 @@ Never change the protected paths listed below.
 Reply in the user's language."""
 
 SOLO_TOOLS = ["Read", "Glob", "Grep", "Bash", "WebSearch", "WebFetch", "TodoWrite"]
+SANDBOX = {"enabled": True, "autoAllowBashIfSandboxed": True}
 PROTECT_HOOK = {"hooks": {"PreToolUse": [{"matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash", "hooks": [
     {"type": "command", "command": f'python3 "{SCRIPTS_DIR / "protect.py"}"'}]}]}}
 
@@ -27,13 +29,41 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(root), *GIT_ID, *args], capture_output=True, text=True)
 
 
+def clone(src: Path, dst: Path) -> None:
+    """Copy a folder as copy-on-write clones where the file system can (APFS, Btrfs, XFS): near-instant and
+    almost no extra disk space, even with node_modules or .venv inside. Elsewhere, a normal copy."""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    command = ["cp", "-cR", str(src), str(dst)] if sys.platform == "darwin" else ["cp", "-a", "--reflink=auto", str(src), str(dst)]
+    if subprocess.run(command, capture_output=True).returncode != 0:
+        shutil.rmtree(dst, ignore_errors=True)
+        shutil.copytree(src, dst, symlinks=True)
+
+
+def drop_outside_links(ws: Path) -> list[Path]:
+    """Remove symlinks that lead out of the copy: a solo model writing through one would change the real files."""
+    root = ws.resolve()
+    dropped = []
+    for folder, dirs, files in os.walk(ws):
+        for name in dirs + files:
+            path = Path(folder) / name
+            if path.is_symlink():
+                target = (path.parent / os.readlink(path)).resolve()
+                if target != root and root not in target.parents:
+                    path.unlink()
+                    dropped.append(path.relative_to(ws))
+    return dropped
+
+
 def prepare(target: Path, run_dir: Path, keys: list[str]) -> dict[str, Path]:
     """Copy the folder once per model, before the hive touches it, and commit the copy as a baseline."""
     base = memory.hive_home() / "tmp" / run_dir.name
     workspaces = {}
     for key in keys:
         ws = base / key
-        shutil.copytree(target, ws, symlinks=True)
+        clone(target, ws)
+        dropped = drop_outside_links(ws)
+        if dropped:
+            print(f"⚖️  {key}: removed {len(dropped)} link(s) leading out of the copy, e.g. {dropped[0]}")
         if not (ws / ".git").exists():
             _git(ws, "init", "-q")
         _git(ws, "add", "-A")
@@ -49,7 +79,7 @@ def _protect(ws: Path, protected: list[str]) -> None:
 
 
 async def solo(key: str, goal: str, ws: Path, done: list[str], protected: list[str], budget: float | None,
-               run_dir: Path) -> dict:
+               run_dir: Path, sandbox: bool = False) -> dict:
     model = models.get(key)
     extra = SOLO_PROMPT
     extra += "\n\nAcceptance: " + ("; ".join(f"`{c}`" for c in done) if done else "use the project's own tests.")
@@ -58,7 +88,8 @@ async def solo(key: str, goal: str, ws: Path, done: list[str], protected: list[s
     _protect(ws, protected)
     args = ["--model", model.id, "--effort", model.queen_effort or "high", "--append-system-prompt", extra,
             "--permission-mode", "acceptEdits", "--allowedTools", *SOLO_TOOLS, "--disallowedTools", "Agent", "Task",
-            "--settings", json.dumps(PROTECT_HOOK), "--setting-sources", "project,local",
+            "--settings", json.dumps({**PROTECT_HOOK, **({"sandbox": SANDBOX} if sandbox else {})}),
+            "--setting-sources", "project,local",
             *(["--max-budget-usd", f"{budget:g}"] if budget else [])]
     env = {**os.environ, "CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS": "1", "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "40"}
     entry = {"model": key, "name": model.name, "workspace": str(ws)}
@@ -88,10 +119,10 @@ async def solo(key: str, goal: str, ws: Path, done: list[str], protected: list[s
 
 
 async def run_all(goal: str, workspaces: dict[str, Path], done: list[str], protected: list[str],
-                  budget: float | None, run_dir: Path) -> list[dict]:
+                  budget: float | None, run_dir: Path, sandbox: bool = False) -> list[dict]:
     async def one(key: str, ws: Path) -> dict:
         print(f"⚖️  {models.get(key).name} alone: working…", flush=True)
-        entry = await solo(key, goal, ws, done, protected, budget, run_dir)
+        entry = await solo(key, goal, ws, done, protected, budget, run_dir, sandbox)
         state = "error: " + entry["error"] if entry.get("error") else ("passed" if entry["passed"] else
                                                                        "failed" if entry["passed"] is False else "done")
         print(f"⚖️  {entry['name']} alone: {state} · ${entry['cost_usd'] or 0:.3f}", flush=True)

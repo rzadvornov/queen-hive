@@ -32,6 +32,11 @@ PROFILE_TEMPLATE = """# Project profile
 ## Notes
 """
 
+def label_of(description: str, fallback: str = "#") -> str:
+    """A brief's ID is the first word of its Agent description: S1, B2, R-arch, F1."""
+    return description.split()[0] if description and description.split() else fallback
+
+
 def stage_of(agent: str, label: str) -> str:
     """The hive stage of a bee, from its agent type and brief label (S1, B2, R-arch, F1)."""
     agent = agent.rsplit(":", 1)[-1]

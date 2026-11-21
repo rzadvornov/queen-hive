@@ -1,4 +1,4 @@
-"""Read a finished Claude Code session from its transcript: one Tracker per hive job in it.
+"""Read a finished Claude Code session from its transcript: one JobStats per hive job in it.
 
 The transcript is Claude Code's own JSONL file, not a stable API, so everything here
 tolerates missing fields: a format change degrades the report instead of crashing it.
@@ -12,7 +12,9 @@ from pathlib import Path
 
 from hive import pricing, verify
 from hive.pricing import Tokens
-from hive.render import AGENT_TOOLS, Dispatch, Result, Tracker, result_text, stage_of
+from hive.render import AGENT_TOOLS, Dispatch, Result, JobStats, result_text
+
+from hivecore import label_of, stage_of
 
 _NOT_PROMPTS = ("<task-notification>", "<system-reminder>", "<local-command", "<command-message>")
 
@@ -22,7 +24,7 @@ class JobTrace:
     """One job in a session: from the user's goal to the Queen's hive-summary block."""
 
     prompt: str
-    tracker: Tracker
+    tracker: JobStats
     summary: dict | None = None
     _pending_checks: dict[str, str] = field(default_factory=dict)
 
@@ -95,7 +97,7 @@ def _bees(session_dir: Path) -> dict[str, tuple[str, str, list[dict]]]:
     return bees
 
 
-def _add_usage(tracker: Tracker, stage: str, entry: dict, seen: set[str]) -> None:
+def _add_usage(tracker: JobStats, stage: str, entry: dict, seen: set[str]) -> None:
     message = entry.get("message") or {}
     key = message.get("id") or entry.get("uuid")
     if not message.get("usage") or not message.get("model") or key in seen:
@@ -113,11 +115,11 @@ def jobs(path: Path) -> tuple[list[JobTrace], float | None]:
     entries = _lines(path)
     traces: list[JobTrace] = []
     current: JobTrace | None = None
-    other = Tracker()   # tokens of turns outside any job (questions, the retro)
+    other = JobStats()   # tokens of turns outside any job (questions, the retro)
     seen: set[str] = set()
 
     def open_job(prompt: str, ts: float | None) -> JobTrace:
-        trace = JobTrace(prompt, Tracker())
+        trace = JobTrace(prompt, JobStats())
         trace.tracker.started = ts or trace.tracker.started
         return trace
 
@@ -173,7 +175,7 @@ def _tool_use(trace: JobTrace, block: dict) -> None:
     tracker, data = trace.tracker, block.get("input") or {}
     if block.get("name") in AGENT_TOOLS:
         description = data.get("description", "")
-        label = description.split()[0] if description else f"#{len(tracker.dispatches) + 1}"
+        label = label_of(description, f"#{len(tracker.dispatches) + 1}")
         agent = data.get("subagent_type", "?")
         tracker.dispatches[block.get("id", label)] = Dispatch(label, agent, stage_of(agent, label), description)
         tracker.label_counts[label] = tracker.label_counts.get(label, 0) + 1
@@ -195,12 +197,12 @@ def _tool_results(trace: JobTrace, entry: dict) -> None:
             bee.status = "launched" if "async_launched" in text else "failed" if block.get("is_error") else "reported"
 
 
-def _estimate(tracker: Tracker) -> float:
+def _estimate(tracker: JobStats) -> float:
     return sum(pricing.cost_by_id(tokens, model, "1h" if stage == "queen" else "5m") or 0.0
                for (stage, model), tokens in tracker.usage.items())
 
 
-def _price(traces: list[JobTrace], other: Tracker, exact: float | None, session_id: str) -> None:
+def _price(traces: list[JobTrace], other: JobStats, exact: float | None, session_id: str) -> None:
     """Each job's cost: its share of Claude Code's exact session cost, else the token estimate."""
     estimates = [_estimate(t.tracker) for t in traces]
     total = sum(estimates) + _estimate(other)

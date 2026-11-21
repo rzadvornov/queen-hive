@@ -7,16 +7,19 @@ from pathlib import Path
 
 
 def binary() -> str:
-    """Claude Code on PATH, else the copy bundled with the SDK."""
+    """Claude Code on PATH, else the copy bundled with the SDK (the optional `bundled` extra)."""
     found = shutil.which("claude")
     if found:
         return found
-    import claude_agent_sdk
-
-    bundled = Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude"
-    if bundled.is_file():
+    try:
+        import claude_agent_sdk
+    except ImportError:
+        claude_agent_sdk = None
+    bundled = Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude" if claude_agent_sdk else None
+    if bundled and bundled.is_file():
         return str(bundled)
-    raise SystemExit("Claude Code not found: install it, or reinstall the hive so the SDK brings its own copy.")
+    raise SystemExit("Claude Code not found. Install it (https://code.claude.com), or install the hive with its own "
+                     "copy: pip install -e \".[bundled]\"")
 
 
 def print_mode(args: list[str], prompt: str, cwd: Path | None = None, env: dict | None = None,

@@ -11,7 +11,7 @@ import sys
 import time
 from pathlib import Path
 
-from hivecore import stage_of
+from hivecore import label_of, stage_of
 
 
 def emit(run_dir: Path, kind: str, **data) -> None:
@@ -68,7 +68,7 @@ def handle(run_dir: Path, data: dict) -> None:
         return
     if event == "PreToolUse" and tool in ("Agent", "Task"):
         description = tool_input.get("description", "")
-        label = description.split()[0] if description else "#"
+        label = label_of(description)
         agent = tool_input.get("subagent_type", "?")
         emit(run_dir, "dispatch", id=data.get("tool_use_id"), label=label, agent=agent, stage=stage_of(agent, label),
              description=description, prompt=tool_input.get("prompt", ""))
@@ -83,7 +83,7 @@ def handle(run_dir: Path, data: dict) -> None:
     elif event == "SubagentStop":
         meta, path = bee_meta(data)
         description = meta.get("description", "")
-        label = description.split()[0] if description else "#"
+        label = label_of(description)
         text = data.get("last_assistant_message") or (last_text(path) if path else "")
         emit(run_dir, "report", id=meta.get("toolUseId"), label=label,
              stage=stage_of(meta.get("agentType") or data.get("agent_type") or "?", label), ok=not failed(text),

@@ -5,24 +5,22 @@ for the dashboard (and for the progress lines of a headless run). When it exits,
 transcript gives the run records and reports.
 """
 
-import asyncio
 import contextlib
-import dataclasses
 import json
 import os
-import shutil
 import signal
 import subprocess
 import threading
 import uuid
 from pathlib import Path
 
-from hive import PLUGIN_DIR, claude, compare, memory, stats, transcript, verify
+from hive import PLUGIN_DIR, claude, compare, memory
 from hive.folders import start_point
 from hive.modes import Policy
 from hive.render import EventLog, format_event
+from hive.records import finish, memory_snapshot
 from hive.router import Router
-from hive.session import SUBAGENT_ENV, Job, build_record, new_run_dir, plugin_for, queen_prompt
+from hive.job import SUBAGENT_ENV, Job, new_run_dir, plugin_for, queen_prompt
 
 SESSION_NOTE = """
 # Session
@@ -64,7 +62,7 @@ def command(job: Job, pdir: Path, system: str, plugin: Path, session_id: str, in
     if installed:
         settings["enabledPlugins"] = {plugin_id: False for plugin_id in installed}
     if job.sandbox:
-        settings["sandbox"] = {"enabled": True, "autoAllowBashIfSandboxed": True}
+        settings["sandbox"] = compare.SANDBOX
     if settings:
         argv += ["--settings", json.dumps(settings)]
     if job.goal:
@@ -80,6 +78,7 @@ def run(job: Job, headless: bool = False) -> list[dict]:
     run_dir = new_run_dir(pdir)
     session_id = str(uuid.uuid4())
     start = start_point(target, run_dir)
+    memory_before = memory_snapshot(pdir)
     workspaces = compare.prepare(target, run_dir, job.compare) if job.compare else {}
     EventLog(run_dir / "events.jsonl").emit(
         "run_start", goal=job.goal, queen=job.queen.key, workers=job.workers.key, mode=job.mode,
@@ -96,7 +95,7 @@ def run(job: Job, headless: bool = False) -> list[dict]:
         if job.local_models():   # some bees run locally: Claude Code talks to the router, which splits the traffic
             env["ANTHROPIC_BASE_URL"] = stack.enter_context(Router(job.local_models())).url
         _run(argv, target, env, run_dir, headless, job.budget)
-    return finish(job, pdir, run_dir, start, session_id, workspaces)
+    return finish(job, pdir, run_dir, start, session_id, workspaces, headless, memory_before)
 
 
 def _run(argv: list[str], target: Path, env: dict, run_dir: Path, headless: bool, budget: float | None) -> None:
@@ -152,62 +151,3 @@ def follow(path: Path, stop: threading.Event, interval: float = 0.3) -> None:
         if stopping:
             return
         stop.wait(interval)
-
-
-def finish(job: Job, pdir: Path, run_dir: Path, start, session_id: str, workspaces: dict[str, Path]) -> list[dict]:
-    path = transcript.locate(session_id)
-    if not path:
-        print("🐝 no transcript for this session, so there is nothing to report.")
-        shutil.rmtree(run_dir, ignore_errors=True)
-        return []
-    traces, exact = transcript.jobs(path)
-    if not traces:
-        shutil.rmtree(run_dir, ignore_errors=True)
-        if exact:
-            print(f"🐝 session cost ${exact:.2f} · no hive job in it, so no run was recorded.")
-        return []
-
-    records = []
-    for index, (trace, job_dir) in enumerate(zip(traces, split_events(run_dir, pdir, traces))):
-        last = index == len(traces) - 1
-        goal = trace.prompt or job.goal
-        cmds = verify.acceptance_commands(job.done, trace.summary, memory.commands(pdir))
-        results = verify.run_checks(cmds, job.folders[0]) if cmds and last else []   # the files are as the last job left them
-        log = EventLog(job_dir / "events.jsonl")
-        for res in results:
-            log.emit("acceptance", **res)
-        compared = []
-        if workspaces and last:
-            compared = asyncio.run(compare.run_all(goal, workspaces, cmds, memory.protected_paths(pdir), job.budget, job_dir))
-        record = build_record(dataclasses.replace(job, goal=goal), pdir, job_dir, trace.tracker.started, start,
-                              trace.tracker, cmds, results, compared, trace.summary)
-        stats.save(record, job_dir)
-        log.emit("run_end", status=record["status"], cost_usd=record["hive"]["cost_usd"],
-                 passed=record["acceptance"]["passed"], record=record["path"])
-        stats.print_report(record)
-        records.append(record)
-    if exact and len(traces) > 1:
-        print(f"🐝 session cost ${exact:.2f} for {len(traces)} jobs")
-    return records
-
-
-def split_events(run_dir: Path, pdir: Path, traces: list) -> list[Path]:
-    """One run folder per job: the session's event log is cut at each job's start."""
-    path = run_dir / "events.jsonl"
-    events = []
-    for line in path.read_text().splitlines() if path.exists() else []:
-        try:
-            events.append(json.loads(line))
-        except ValueError:
-            continue
-    start = next((e for e in events if e.get("kind") == "run_start"), {"kind": "run_start"})
-    rest = [e for e in events if e.get("kind") != "run_start"]
-    dirs = [run_dir] + [new_run_dir(pdir) for _ in traces[1:]]
-    bounds = [t.tracker.started for t in traces[1:]] + [float("inf")]
-    begin = float("-inf")
-    for trace, job_dir, end in zip(traces, dirs, bounds):
-        lines = [{**start, "goal": trace.prompt or start.get("goal", ""), "ts": trace.tracker.started}]
-        lines += [e for e in rest if begin <= e.get("ts", 0) < end]
-        (job_dir / "events.jsonl").write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in lines))
-        begin = end
-    return dirs

@@ -19,7 +19,7 @@ acceptance ✅ $ npm test
 
 - **Python 3.10 or newer**
 - **macOS or Linux**
-- A Claude Code login or an `ANTHROPIC_API_KEY`. You don't need to install Claude Code, because the SDK ships its own copy of the CLI.
+- **Claude Code** ([install](https://code.claude.com)) with your login, or an `ANTHROPIC_API_KEY`. Without Claude Code installed, install the hive with its own copy: `pip install -e ".[bundled]"`.
 
 ### Check your Python version
 
@@ -76,8 +76,17 @@ The Hive signs in with your Claude Code login or `ANTHROPIC_API_KEY`.
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
 - **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
 - **Independent review:** Haiku reviewers check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security). They don't see the builders' reports. `hive review` runs the same review on any diff, branch or PR.
-- **Protected paths:** for example your acceptance tests. A hook blocks any edit to them.
+- **Protected paths:** for example your acceptance tests. A hook blocks file edits to them, and shell writes as far as a parse of the command can tell.
 - **Memory outside your project:** kept in `~/.hive/projects/…`. After each job, a retro (`waggle`) proposes rule fixes and applies only those you approve. Skip it with `--no-waggle`.
 - **Statistics:** tokens and cost per stage. Each job is compared with single models, either estimated or, with `--compare`, as real side-by-side runs.
+
+## Safety: what is enforced and what isn't
+
+- **Permissions are Claude Code's.** Edits outside the granted folders need your approval. In `auto` mode, shell commands run without asking. Use `ask` mode, or `--sandbox` (Claude Code's Bash sandbox: writes only inside the granted folders), on machines that matter.
+- **Hooks are guards, not a sandbox.** The protected-path and read-only-bee checks parse shell commands; a command such as `python -c "…"` can write without being noticed. `--sandbox` is the real boundary.
+- **Acceptance commands run on your machine.** After a session the hive itself runs the acceptance commands with your shell, outside Claude Code's permissions. Yours (`--done`, the profile's `test` command) always run. The Queen's own run automatically only in `plan` and `auto` mode without `--sandbox`, where she could have run them in the session anyway. In `ask` mode or with `--sandbox` you're asked first (default no), and headless runs skip them.
+- **Memory feeds every later session.** The Queen writes `known-issues.md`, `decisions.md` and `progress.md`, and they go into her instructions next time. The end-of-session report lists every line she added (📝), so you can catch an instruction planted by code you don't trust.
+- **`--compare` copies are contained.** Links that lead out of a copy are removed, and with `--sandbox` the solo models run sandboxed too.
+- **Everything stays local.** Memory, run logs and the dashboard never leave your machine. The dashboard listens on `127.0.0.1` and answers only its own pages, so other websites can't read it or trigger paid model checks. Local models get no login headers.
 
 📖 **Full guide: [docs/GUIDE.md](docs/GUIDE.md)**

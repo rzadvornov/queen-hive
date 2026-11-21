@@ -9,7 +9,7 @@ from pathlib import Path
 
 from hive import PLUGIN_DIR, memory, models, stats, verify
 from hive.folders import StartPoint
-from hive.render import Tracker
+from hive.render import JobStats
 
 REVIEW_LEVELS = {
     "full": "Run the full independent review with the default lenses for this task type.",
@@ -97,7 +97,7 @@ def new_run_dir(pdir: Path) -> Path:
     return run_dir
 
 
-def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: StartPoint | None, tracker: Tracker,
+def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: StartPoint | None, tracker: JobStats,
                  acceptance_cmds: list[str], results: list[dict], compared: list[dict], summary: dict | None) -> dict:
     hive_data = stats.hive_section(tracker)
     estimate_keys = list(dict.fromkeys([*models.DEFAULT_COMPARE, job.queen.key]))

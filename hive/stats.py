@@ -7,7 +7,7 @@ from pathlib import Path
 
 from hive import memory, models, pricing
 from hive.pricing import Tokens
-from hive.render import Tracker
+from hive.render import JobStats
 
 
 def _ratio(exact: Tokens, seen: Tokens) -> Tokens:
@@ -18,7 +18,7 @@ def _ratio(exact: Tokens, seen: Tokens) -> Tokens:
                   r(exact.cache_read, seen.cache_read), r(exact.cache_write, seen.cache_write))
 
 
-def stage_usage(tracker: Tracker, exact_by_model: dict[str, Tokens]) -> dict[str, dict]:
+def stage_usage(tracker: JobStats, exact_by_model: dict[str, Tokens]) -> dict[str, dict]:
     """Tokens and cost per stage.
 
     Streamed messages undercount some fields (output especially), so each stage's share
@@ -36,7 +36,7 @@ def stage_usage(tracker: Tracker, exact_by_model: dict[str, Tokens]) -> dict[str
     return {stage: {"tokens": e["tokens"].to_dict(), "cost_usd_est": e["cost_usd_est"]} for stage, e in stages.items()}
 
 
-def hive_section(tracker: Tracker) -> dict:
+def hive_section(tracker: JobStats) -> dict:
     result = tracker.result   # session totals are cumulative, so the last turn's result has everything
     by_model = tracker.tokens_by_model()
     if result and result.model_usage:  # the CLI's own per-model totals are authoritative

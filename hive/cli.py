@@ -81,7 +81,7 @@ def _choose(args, goal: str = "", ask_folder: bool = False):
 
 def cmd_run(argv: list[str]) -> None:
     from hive import launch, ui
-    from hive.session import Job
+    from hive.job import Job
 
     parser = argparse.ArgumentParser(prog="hive", description="Run the hive: Claude Code with a Queen and Haiku bees.",
                                      epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -160,7 +160,7 @@ def _confirm(question: str) -> bool:
 def cmd_waggle(argv: list[str], prog: str) -> None:
     """A retro of the project's last run, in Claude Code."""
     from hive import launch
-    from hive.session import Job
+    from hive.job import Job
 
     parser = argparse.ArgumentParser(prog=prog, description="Retro of the project's last run, with proposed rule and memory edits.")
     parser.add_argument("note", nargs="?", default="", help="what to focus the retro on (optional).")
@@ -175,7 +175,7 @@ def cmd_waggle(argv: list[str], prog: str) -> None:
 def cmd_review(argv: list[str]) -> None:
     """An independent review of existing changes, in Claude Code."""
     from hive import launch
-    from hive.session import Job
+    from hive.job import Job
 
     parser = argparse.ArgumentParser(prog="hive review", description="Independent review of changes by reviewer bees; builds nothing.")
     parser.add_argument("target", nargs="?", default="",

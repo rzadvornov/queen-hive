@@ -52,7 +52,7 @@ class Result:
 
 
 @dataclass
-class Tracker:
+class JobStats:
     """What one job used and did: tokens per stage and model, bees, returns and the Queen's checks."""
 
     usage: dict[tuple[str, str], Tokens] = field(default_factory=dict)   # (stage, model id) → tokens

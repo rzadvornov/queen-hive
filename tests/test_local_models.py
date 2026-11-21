@@ -11,7 +11,7 @@ from starlette.routing import Route
 
 from hive import PLUGIN_DIR, models
 from hive.router import Router
-from hive.session import Job, plugin_for
+from hive.job import Job, plugin_for
 
 
 class Serve:
@@ -58,6 +58,9 @@ def test_local_models_catalog(hive_home):
     assert pricing.cost_by_id(Tokens(input=10**6, output=10**6), "qwen2.5-coder:14b") == 0   # local tokens are free
     with pytest.raises(SystemExit):
         models.add_local("opus-5.5", "x")                    # can't shadow a Claude model
+    for bad in ("../x", "a/b", ".hidden", ""):
+        with pytest.raises(SystemExit):
+            models.add_local(bad, "x")                       # the key becomes part of a folder name
     assert models.remove_local("qwen-coder") and not models.remove_local("qwen-coder")
     with pytest.raises(KeyError):
         models.get("qwen-coder")

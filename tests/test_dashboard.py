@@ -35,7 +35,7 @@ def test_runs_live_and_export(tmp_path):
     root.mkdir()
     pdir, done = make_run(root, finished=True)
     _, live = make_run(root, finished=False)
-    client = TestClient(create_app())
+    client = TestClient(create_app(), base_url="http://localhost:7777")
 
     runs = client.get("/api/runs").json()
     by_id = {r["id"]: r for r in runs}
@@ -75,3 +75,18 @@ def test_background_up_and_down(capsys):
     assert not process.pid_path().exists()
     out = capsys.readouterr().out
     assert "already running" in out and "stopped" in out
+
+
+def test_dashboard_answers_only_local_pages(monkeypatch):
+    from hive import models
+
+    async def no_probe(keys=None):
+        return {}
+
+    monkeypatch.setattr(models, "check_access", no_probe)
+    local = TestClient(create_app(), base_url="http://localhost:7777")
+    assert local.get("/api/models").status_code == 200
+    assert TestClient(create_app(), base_url="http://evil.example").get("/api/projects").status_code == 403   # DNS rebinding
+    assert local.post("/api/models/check").status_code == 403                                      # no Origin
+    assert local.post("/api/models/check", headers={"origin": "https://evil.example"}).status_code == 403
+    assert local.post("/api/models/check", headers={"origin": "http://localhost:7777"}).status_code == 200

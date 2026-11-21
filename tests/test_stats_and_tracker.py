@@ -1,6 +1,6 @@
 from hive import models, pricing, stats, verify
 from hive.pricing import Tokens
-from hive.render import Tracker, format_event, stage_of
+from hive.render import JobStats, format_event, stage_of
 
 
 def test_tokens_from_both_usage_shapes():
@@ -26,7 +26,7 @@ def test_cache_write_ttl_matches_reported_costs():
 
 
 def test_stages_scaled_to_exact_model_totals():
-    t = Tracker()
+    t = JobStats()
     t.usage = {("queen", "claude-opus-5-5"): Tokens(output=20), ("build", "claude-haiku-5-5"): Tokens(output=1),
                ("review", "claude-haiku-5-5"): Tokens(output=3)}
     exact = {"claude-haiku-5-5": Tokens(output=400), "claude-opus-5-5": Tokens(output=100)}
@@ -43,7 +43,7 @@ def test_stage_of():
 
 
 def test_returns_count_repeated_build_and_fix_briefs():
-    t = Tracker(label_counts={"B1": 3, "B2": 1, "F1": 2, "R-goal": 2})
+    t = JobStats(label_counts={"B1": 3, "B2": 1, "F1": 2, "R-goal": 2})
     assert t.returns == 3                                     # B1 twice again, F1 once again; reviews don't count
 
 

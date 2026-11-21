@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import time
 from dataclasses import dataclass
 
@@ -68,6 +69,8 @@ def save_local(entries: list[dict]) -> None:
 
 
 def add_local(key: str, model_id: str, base_url: str = OLLAMA_URL, name: str | None = None) -> Model:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", key):
+        raise SystemExit(f"'{key}': use letters, digits, '.', '_' and '-' only (it becomes part of a folder name).")
     if any(m.key == key for m in CATALOG):
         raise SystemExit(f"'{key}' is a Claude model's key; pick another name.")
     entries = [{"key": m.key, "id": m.id, "name": m.name, "base_url": m.base_url} for m in local_models() if m.key != key]

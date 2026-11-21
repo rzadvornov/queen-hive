@@ -9,7 +9,8 @@ from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
+from starlette.middleware import Middleware
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
@@ -48,26 +49,44 @@ def _events(run_dir: Path) -> list[dict]:
     return events
 
 
+_ROWS: dict[Path, tuple[int, dict | None]] = {}   # run.json → (mtime, row): finished runs rarely change
+
+
 def _brief(pdir: Path, run_dir: Path) -> dict | None:
     """One row for the runs table: from run.json when finished, else from the event log."""
     record_path = run_dir / "run.json"
-    if record_path.exists():
-        try:
-            r = json.loads(record_path.read_text())
-        except ValueError:
-            return None
-        base = None
-        from hive.stats import baseline
+    try:
+        stamp = record_path.stat().st_mtime_ns
+    except OSError:
+        return _live_brief(pdir, run_dir)
+    cached = _ROWS.get(record_path)
+    if cached and cached[0] == stamp:
+        return cached[1]
+    row = _finished_brief(pdir, run_dir, record_path)
+    _ROWS[record_path] = (stamp, row)
+    return row
 
-        found = baseline(r)
-        if found and found[1] and r["hive"].get("cost_usd"):
-            base = {"name": found[0], "cost_usd": found[1], "measured": found[2]}
-        return {
-            "project": pdir.name, "id": run_dir.name, "root": r["folders"][0], "goal": r["goal"],
-            "queen": r["queen"], "workers": r["workers"], "mode": r["mode"], "status": r["status"],
-            "started_at": r["started_at"], "ended_at": r.get("ended_at"), "cost_usd": r["hive"].get("cost_usd"),
-            "passed": r["acceptance"]["passed"], "compare": bool(r.get("compare")), "baseline": base, "live": False,
-        }
+
+def _finished_brief(pdir: Path, run_dir: Path, record_path: Path) -> dict | None:
+    from hive.stats import baseline
+
+    try:
+        r = json.loads(record_path.read_text())
+    except ValueError:
+        return None
+    base = None
+    found = baseline(r)
+    if found and found[1] and r["hive"].get("cost_usd"):
+        base = {"name": found[0], "cost_usd": found[1], "measured": found[2]}
+    return {
+        "project": pdir.name, "id": run_dir.name, "root": r["folders"][0], "goal": r["goal"],
+        "queen": r["queen"], "workers": r["workers"], "mode": r["mode"], "status": r["status"],
+        "started_at": r["started_at"], "ended_at": r.get("ended_at"), "cost_usd": r["hive"].get("cost_usd"),
+        "passed": r["acceptance"]["passed"], "compare": bool(r.get("compare")), "baseline": base, "live": False,
+    }
+
+
+def _live_brief(pdir: Path, run_dir: Path) -> dict | None:
     events = _events(run_dir)
     start = next((e for e in events if e["kind"] == "run_start"), None)
     if not start:
@@ -205,8 +224,34 @@ async def export(request: Request) -> Response:
     return HTMLResponse(html, headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
+
+
+class LocalOnly:
+    """Serve only requests addressed to this machine, and POSTs only from the dashboard's own pages.
+
+    The Host check stops DNS rebinding (a web page whose domain points at 127.0.0.1 reading your runs);
+    the Origin check stops other sites from triggering paid model checks.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+            host = headers.get("host", "")
+            origin = headers.get("origin")
+            same_origin = origin in (f"http://{host}", f"https://{host}")
+            if host.rsplit(":", 1)[0] not in LOCAL_HOSTS or (scope["method"] not in ("GET", "HEAD") and not same_origin):
+                await PlainTextResponse("forbidden: the hive dashboard only answers its own pages on localhost",
+                                        status_code=403)(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
 def create_app() -> Starlette:
-    return Starlette(routes=[
+    return Starlette(middleware=[Middleware(LocalOnly)], routes=[
         Route("/", index),
         Route("/api/runs", api_runs),
         Route("/api/runs/{pid}/{rid}", api_run),

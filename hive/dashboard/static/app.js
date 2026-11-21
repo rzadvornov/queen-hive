@@ -53,7 +53,7 @@ function reconstruct(events) {
       case "dispatch": {
         const brief = { ...e, status: "running", reports: [] };
         run.briefs.set(e.id, brief); run.order.push(e.id);
-        run.timeline.push({ ts: e.ts, text: `👑 → ${e.agent.split(":").pop()} <b>${esc(e.label)}</b> ${esc(e.description.slice(e.label.length))}` });
+        run.timeline.push({ ts: e.ts, text: `👑 → ${esc(e.agent.split(":").pop())} <b>${esc(e.label)}</b> ${esc(e.description.slice(e.label.length))}` });
         break;
       }
       case "report": {

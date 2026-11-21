@@ -65,29 +65,18 @@ sonnet-5.5   claude-sonnet-5-5    2/10         queen      ✅
 ## 3. Your first run
 
 ```bash
-cd ~/projects/shop            # or name the folder in the goal / with -d
-hive "Add a combo discount: coffee + croissant makes the croissant half price"
+hive                           # asks which folder to work on
+# or
+hive -d ~/projects/shop "Add a combo discount: coffee + croissant makes the croissant half price"
 ```
 
-1. **First use of a folder:** a Haiku scout reads the project and drafts its profile. Review it: **[Y]es** saves it, **[e]dit** opens it in `$EDITOR`, and **[n]o** keeps an empty template. Check **Commands** and **Protected paths** in particular. Folders called `acceptance/` are suggested as protected automatically.
-2. **Confirm the settings:** `Run with 👑 Claude Opus 5.5 · 🐝 Claude Haiku 5.5 bees · 🛡 mode plan? [Y/n]`. These are your last choices, or the defaults on first use. Enter runs with them. **n** opens a menu for each: the Queen, the bee model and the mode (plan, auto or ask). Your answers become the new defaults.
-3. Watch the hive work:
+1. **The folder:** without `-d` or a folder in the goal, the hive asks which folder to work on. Pick a project it already knows by number, type a path, or press Enter for the current folder.
+2. **First use of a folder:** a Haiku scout reads the project and drafts its profile. Review it: **[Y]es** saves it, **[e]dit** opens it in `$EDITOR`, and **[n]o** keeps an empty template. Check **Commands** and **Protected paths** in particular. Folders called `acceptance/` are suggested as protected automatically.
+3. **Confirm the settings:** `Run with 👑 Claude Opus 5.5 · 🐝 Claude Haiku 5.5 bees · 🛡 mode plan? [Y/n]`. These are your last choices, or the defaults on first use. Enter runs with them. **n** opens a menu for each: the Queen, the bee model and the mode (plan, auto or ask). Your answers become the new defaults.
+4. **Claude Code opens** with the hive loaded: the Queen's rules, the bees and the protection hook. It's the normal Claude Code interface, so everything you know from `claude` works. If you gave a goal, the Queen starts on it straight away. Otherwise type one. You can give several goals in one session; each finished job ends with a `hive-summary` block, and then the Queen runs the **waggle**: what went wrong, with one proposed edit per item. Reply with the items to apply (for example `apply 1 and 3`). Nothing changes without your approval.
+5. **Exit Claude Code** (`/exit` or Ctrl-D). The hive then runs the acceptance check for the last job and prints a report per job. Every job is saved as a run for `hive stats` and the dashboard.
 
-```
-📂 access granted: /Users/you/projects/shop
-👑 Queen: Claude Opus 5.5 · 🐝 bees: Claude Haiku 5.5 · mode: auto · review: full · budget $5
-👑 → 🔨 builder   B1 combo logic in calcOrder
-👑 → 🔨 builder   B2 combo row on page
-   🐝 B1 📨 Changed: src/combo.js, src/order.js …
-👑 🔍 $ npm test
-   ✅ ℹ pass 15 ℹ fail 0
-👑 → 🧐 reviewer  R-goal review combo task
-👑 → 🧐 reviewer  R-correctness review combo task
-...
-👑 Correctness: both findings dismissed: string quantities never reach the cart …
-```
-
-5. **The report** at the end (from a real run on a small Node shop):
+**The report** after you exit (from a real run on a small Node shop):
 
 ```
 variant                                       passed   tokens in/out   cache r/w       cost      time
@@ -103,17 +92,17 @@ review: lenses goal, correctness, tests, arch, perf, rules, security · confirme
 🐝 Hive $1.00 vs Claude Opus 5.5 alone $3.05 (estimate, same tokens) → saved 67%
 ```
 
-Then the **waggle** starts: the Queen continues the same session and lists what went wrong in this job, with one proposed edit per item. Type which items to apply (for example `apply 1 and 3`), then `/exit`. Nothing changes without your approval. `--no-waggle` skips it, and it's skipped automatically when there's no terminal to answer in (scripts, CI).
+**Scripts and CI.** Without a terminal, or with `--headless`, the hive doesn't open Claude Code. It runs the goal on its own, prints the Queen's progress, stops at the end and prints the same report. A goal is required, there's no waggle, and `--budget` is a hard cap.
 
 The hive never commits. Review the changes with `git diff` and commit them yourself.
 
 ## 4. Commands and flags
 
-### `hive "goal"` (also `hive run "goal"`)
+### `hive ["goal"]` (also `hive run`)
 
 | Flag | Meaning |
 |---|---|
-| `-d, --dir DIR` | Grant access to a folder (repeatable). Folders named in the goal (`~/x`, `/abs`, `./x`, quoted paths) are granted automatically. The first folder is the working directory. With no folder at all, the current directory is used. |
+| `-d, --dir DIR` | Grant access to a folder (repeatable). Folders named in the goal (`~/x`, `/abs`, `./x`, quoted paths) are granted automatically. The first folder is the working directory. With no folder at all, the hive asks in a terminal (Enter = the current folder) and uses the current folder in scripts. |
 | `--queen KEY` | `fable-5.1`, `opus-5.5`, `sonnet-5.5`, `opus-5`, `opus-4.8`, … Not asked about. |
 | `--workers KEY` | Bee model, `haiku-5.5` by default. Any catalog model works, e.g. `sonnet-5.5` for harder builds. Not asked about. |
 | `--mode plan\|auto\|ask` | Autonomy mode. Not asked about. With `--queen`, `--workers` and `--mode` all given, nothing is asked. |
@@ -121,19 +110,19 @@ The hive never commits. Review the changes with `git diff` and commit them yours
 | `--lenses a,b,c` | Exact lenses: `goal, correctness, tests, arch, perf, rules, security` for code, `facts, goal` for research, `goal, scope` for files. |
 | `--done "CMD"` | Acceptance command that must pass (repeatable). The hive runs it itself after the job, and it decides ✅/❌. |
 | `--compare [MODELS]` | Also redo the job with single models alone, in copies of the folder. The default is `sonnet-5.5,opus-4.8,opus-5.5`, and `all` means every available Queen. Asks for confirmation first (`--yes` skips that). |
-| `--budget USD` | Hard cap per run, 5 by default. Each `--compare` model gets the same cap. |
-| `-v` | Show every bee message and tool call. |
+| `--headless` | Run without Claude Code's interface and stop at the end. This is the default when there's no terminal. |
+| `--budget USD` | Hard cap for a headless run, 5 by default. Each `--compare` model gets the same cap. Claude Code has no cap for interactive sessions. |
+| `-v` | Headless: show every bee message and tool call. |
 | `--no-init` | Don't draft a profile on first use. |
+| `--no-waggle` | Don't have the Queen run the retro after each finished job. |
 
-The exit code is 0 when the job finished and acceptance passed (or there was no acceptance command), and 1 otherwise. This makes the hive usable in scripts.
+The exit code is 0 when the last job finished and acceptance passed (or there was no acceptance command), and 1 otherwise. This makes headless runs usable in scripts.
 
 ### Other commands
 
 | Command | What it does |
 |---|---|
-| `hive chat [-d DIR] [--queen] [--mode]` | A conversation with the Queen. Without `-d` it first asks which folder to work on: pick a project the hive already knows by number, type a path, or press Enter for the current folder. Every message is a goal or a follow-up. In-chat commands: `/mode`, `/queen`, `/dirs PATH`, `/cost`, `/waggle` (or `/retro`), `/waggle on\|off`, `/help`, `/exit`. |
-| `hive waggle` / `hive retro` | Starts a chat focused on the project's last run: what went wrong, plus proposed minimal edits to the rules or memory. Nothing changes until you approve an item. |
-| `--no-waggle` (on `hive "goal"` and `hive chat`) | Skips the retro that otherwise runs after each finished job. |
+| `hive waggle` / `hive retro` | Opens Claude Code with a retro of the project's last run: what went wrong, plus proposed minimal edits to the rules or memory. Nothing changes until you approve an item. |
 | `hive init [DIR] [--no-ai] [--force]` | Draft or redraft a project's profile. `--no-ai` only reads manifest files. |
 | `hive models [--check]` | Catalog, prices and your access. |
 | `hive stats [DIR] [--last]` | Run history: cost, pass rate and average saving. `--last` reprints the last full report. |
@@ -167,7 +156,7 @@ In every mode, edits outside the granted folders are refused (`ask` asks you ins
 - **Say what "done" means.** The best goals come with a check: `--done "npm test"`, `--done "go test ./..."`, or a human-written acceptance test in a protected folder. This is the single most effective thing you can do.
 - **Point at specs.** `"Do task 3 from docs/backlog.md"` works well when the spec lives in the repo.
 - **Mention folders** right in the goal: `"Port the date helpers from ~/old-app to ~/new-app"` grants both.
-- **One goal per run.** Use `hive chat` for a series.
+- **One goal at a time.** Give the next one after the Queen's summary, in the same session.
 - **Protect what the bees must not change.** Put acceptance tests in a folder and list it under *Protected paths* in the profile.
 - **Write the language you think in.** The Queen answers in the language of the goal.
 
@@ -202,7 +191,7 @@ The dashboard keeps running after you close the terminal, until `hive dashboard 
 
 | Page | Shows |
 |---|---|
-| **Live** | The running job, wherever it was started (CLI, chat or plugin): the Queen's latest message, each brief as a card (status, return count, Done when, and the full brief and report), the review lenses, checks and cost. Updates in real time. |
+| **Live** | The running session started by `hive` (headless runs too): the Queen's latest message, each brief as a card (status, return count, Done when, and the full brief and report), the review lenses, checks and cost. Updates in real time. |
 | **Runs** | Every run across projects, filterable by project, Queen and result. Click one for its full timeline. |
 | **Run page** | The bee tree, a comparison bar chart (hive vs ⚖️ measured and ≈ estimated models), tokens and cost by stage, acceptance results, review counts, timeline, and **Export as HTML**, a single offline file you can share. |
 | **Compare** | Cost per run against "Queen alone" over time, and per-Queen averages (cost, pass rate, saving). |
@@ -246,7 +235,7 @@ To try it without installing: `claude --plugin-dir ~/the-hive/hive/plugin`.
 
 ## 12. Costs and safety
 
-- **Budget:** `--budget` (default $5) is a hard cap. The run stops with `error_max_budget_usd` when it's reached. `--compare` multiplies the worst case by the number of models, and the hive asks before starting.
+- **Budget:** in headless runs, `--budget` (default $5) is a hard cap, and the run stops with `error_max_budget_usd` when it's reached. Interactive Claude Code sessions have no cap: watch the cost in Claude Code and the report. `--compare` multiplies the worst case by the number of models, and the hive asks before starting.
 - **Guards against runaway spending:** bees can't spawn bees, at most 5 run at once, and Claude Code's built-in subagents are disabled, so every helper is a hive bee on the model you chose.
 - **Containment:** the hive works only in the folders you grant. Shell commands are not sandboxed, though. In `auto` mode a command *can* reach outside the folders. Use `ask` mode on sensitive machines.
 - **Protected paths:** the hook blocks file tools and shell writes (`>`, `rm`, `mv`, `cp` to the path, `tee`, `sed -i`, `git checkout/restore` …) on protected paths. The shell check is a careful parse, not a sandbox.

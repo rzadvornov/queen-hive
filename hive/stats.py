@@ -46,7 +46,7 @@ def hive_section(tracker: Tracker) -> dict:
         total.add(tokens)
     return {
         "cost_usd": result.total_cost_usd if result else None,
-        "duration_ms": int((time.time() - tracker.started) * 1000),
+        "duration_ms": int(((tracker.ended or time.time()) - tracker.started) * 1000),
         "api_ms": result.duration_api_ms if result else None,
         "turns": len(tracker.results),
         "is_error": result.is_error if result else True,

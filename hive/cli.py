@@ -11,40 +11,48 @@ from pathlib import Path
 from hive import PLUGIN_DIR, __version__, memory, models, stats
 from hive.modes import MODES
 
-SUBCOMMANDS = ("run", "chat", "init", "models", "stats", "dashboard", "waggle", "retro", "doctor", "install-plugin")
+SUBCOMMANDS = ("run", "init", "models", "stats", "dashboard", "waggle", "retro", "doctor", "install-plugin")
 
-EPILOG = """examples:
+EPILOG = """In a terminal, the hive opens Claude Code with the Queen's rules and the bees loaded.
+Without a terminal (scripts, CI), or with --headless, it runs the goal on its own and prints progress.
+
+examples:
+  hive                                         # pick a folder, then work in Claude Code
   hive "Fix the failing tests in ~/projects/api"
   hive "Объясни, как устроен этот проект" --mode auto
+  hive "Add a /health endpoint" --headless --done "npm test"
   hive "Add a /health endpoint" --queen fable-5.1 --compare sonnet-5.5,opus-5.5
-  hive chat -d ~/projects/api
   hive stats
 
-other commands: chat, init, models, stats, dashboard, waggle (alias retro), doctor, install-plugin
+other commands: init, models, stats, dashboard, waggle (alias retro), doctor, install-plugin
 run `hive <command> -h` for details."""
 
 
 def _job_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-d", "--dir", type=Path, action="append", default=[],
-                        help="folder to grant access to (repeatable). Default: folders named in the goal, else the current folder.")
+                        help="folder to grant access to (repeatable). Default: folders named in the goal, else asked in a terminal (Enter = the current folder).")
     parser.add_argument("--queen", help=f"Queen model ({', '.join(m.key for m in models.queens())}). Default: the last one.")
     parser.add_argument("--workers", default=None, help=f"worker bee model. Default: the last one, else {models.DEFAULT_WORKERS}.")
     parser.add_argument("--mode", choices=list(MODES), help="autonomy mode. Default: the last one.")
     parser.add_argument("--review", choices=["full", "light", "off"], default="full", help="independent review level (default full).")
     parser.add_argument("--lenses", help="comma-separated review lenses, e.g. goal,correctness,tests,arch,perf,rules,security")
-    parser.add_argument("--budget", type=float, default=5.0, help="hard spending cap in USD per run (default 5).")
-    parser.add_argument("-v", "--verbose", action="store_true", help="show every bee message and tool call.")
+    parser.add_argument("--budget", type=float, default=5.0,
+                        help="hard spending cap in USD per headless run and per --compare run (default 5).")
+    parser.add_argument("-v", "--verbose", action="store_true", help="headless: show every bee message and tool call.")
     parser.add_argument("--no-init", action="store_true", help="don't draft a project profile on first use.")
     parser.add_argument("--no-waggle", action="store_true", help="don't run the retro (waggle) after each finished job.")
 
 
 def _choose(args, goal: str = "", ask_folder: bool = False):
-    """Resolve folders, Queen, workers and mode, asking only for what wasn't given."""
+    """Resolve folders, Queen, workers and mode, asking only for what wasn't given.
+
+    With ask_folder, the folder is asked when neither -d nor the goal names one."""
     from hive import folders as folders_mod, init, ui
     from hive.models import choose_queen, choose_workers
     from hive.modes import DEFAULT_MODE, choose_mode
 
-    default = folders_mod.ask_folder(Path.cwd()) if ask_folder and not args.dir else Path.cwd()
+    named = args.dir or folders_mod.folders_in(goal)
+    default = folders_mod.ask_folder(Path.cwd()) if ask_folder and not named else Path.cwd()
     folders = folders_mod.resolve(goal, args.dir, default)
     if not args.no_init:
         asyncio.run(init.run(folders[0]))
@@ -67,11 +75,13 @@ def _choose(args, goal: str = "", ask_folder: bool = False):
 
 
 def cmd_run(argv: list[str]) -> None:
+    from hive import launch, ui
     from hive.session import Job, run_job
 
-    parser = argparse.ArgumentParser(prog="hive", description="Run a goal through the hive.",
+    parser = argparse.ArgumentParser(prog="hive", description="Run the hive: Claude Code with a Queen and Haiku bees.",
                                      epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("goal", help="what you want done. Folders mentioned here are granted access.")
+    parser.add_argument("goal", nargs="?", default="",
+                        help="what you want done (optional in a terminal). Folders mentioned here are granted access.")
     _job_args(parser)
     parser.add_argument("--done", action="append", default=[], metavar="CMD",
                         help="acceptance command that must pass (repeatable). Default: the Queen's final checks or the profile's test command.")
@@ -79,10 +89,17 @@ def cmd_run(argv: list[str]) -> None:
                         help=f"also run the goal with single models alone in copies of the folder "
                              f"(default {','.join(models.DEFAULT_COMPARE)}; 'all' = every available Queen model).")
     parser.add_argument("--yes", action="store_true", help="don't ask to confirm --compare costs.")
+    parser.add_argument("--headless", action="store_true",
+                        help="run the goal without Claude Code's interface and stop at the end (the default without a terminal).")
     parser.add_argument("--version", action="version", version=f"hive {__version__}")
     args = parser.parse_args(argv)
 
-    folders, queen, workers, mode = _choose(args, args.goal)
+    headless = args.headless or not ui.interactive()
+    if headless and not args.goal:
+        parser.error("a goal is required for a headless run (no terminal, or --headless)")
+    if args.compare and not args.goal:
+        parser.error("--compare needs a goal")
+    folders, queen, workers, mode = _choose(args, args.goal, ask_folder=not headless)
     compare = _compare_keys(args.compare)
     if compare:
         cap = f"${args.budget:g} each" if args.budget else "no cap"
@@ -92,25 +109,11 @@ def cmd_run(argv: list[str]) -> None:
     job = Job(goal=args.goal, folders=folders, queen=queen, workers=workers, mode=mode, review=args.review,
               lenses=_split(args.lenses), done=args.done, budget=args.budget, compare=compare, verbose=args.verbose,
               waggle=not args.no_waggle)
-    record = asyncio.run(run_job(job))
-    if job.waggle:
-        _waggle_after(job, record)
-    sys.exit(0 if record["acceptance"]["passed"] is not False and record["status"] != "failed" else 1)
-
-
-def _waggle_after(job, record: dict) -> None:
-    """The retro after a one-shot job: resume the job's session so the Queen sees what happened."""
-    from hive import ui
-    from hive.chat import chat
-    from hive.session import WAGGLE_PROMPT
-
-    if not record.get("session_id"):
-        return
-    if not ui.interactive():
-        print("waggle skipped: no terminal to approve edits. Run `hive waggle` later, or pass --no-waggle.")
-        return
-    print("\n🐝 waggle: a retro of this job. Approve the edits you want, then /exit. (--no-waggle skips this)")
-    asyncio.run(chat(job, WAGGLE_PROMPT, resume=record["session_id"]))
+    if headless:
+        record = asyncio.run(run_job(job))
+        sys.exit(0 if record["acceptance"]["passed"] is not False and record["status"] != "failed" else 1)
+    records = launch.run(job)
+    sys.exit(1 if records and records[-1]["acceptance"]["passed"] is False else 0)
 
 
 def _compare_keys(value: str | None) -> list[str]:
@@ -140,21 +143,19 @@ def _confirm(question: str) -> bool:
     return ui.confirm(question)
 
 
-def cmd_chat(argv: list[str], first_prompt: str | None = None, prog: str = "hive chat") -> None:
-    from hive.chat import chat
+def cmd_waggle(argv: list[str], prog: str) -> None:
+    """A retro of the project's last run, in Claude Code."""
+    from hive import launch
     from hive.session import Job
 
-    parser = argparse.ArgumentParser(prog=prog, description="Interactive session with the Queen.")
+    parser = argparse.ArgumentParser(prog=prog, description="Retro of the project's last run, with proposed rule and memory edits.")
+    parser.add_argument("note", nargs="?", default="", help="what to focus the retro on (optional).")
     _job_args(parser)
-    if first_prompt is not None:
-        parser.add_argument("note", nargs="?", default="", help="what to focus the retro on (optional).")
     args = parser.parse_args(argv)
     folders, queen, workers, mode = _choose(args, ask_folder=True)
-    job = Job(goal="", folders=folders, queen=queen, workers=workers, mode=mode, review=args.review,
-              lenses=_split(args.lenses), budget=args.budget, verbose=args.verbose, waggle=not args.no_waggle)
-    if first_prompt is not None:
-        first_prompt = _waggle_prompt(folders[0], getattr(args, "note", ""))
-    asyncio.run(chat(job, first_prompt))
+    job = Job(goal=_waggle_prompt(folders[0], args.note), folders=folders, queen=queen, workers=workers, mode=mode,
+              review=args.review, lenses=_split(args.lenses), budget=args.budget, waggle=False)
+    launch.run(job)
 
 
 def _waggle_prompt(root: Path, note: str) -> str:
@@ -269,17 +270,18 @@ def cmd_install_plugin(argv: list[str]) -> None:
 
 def main() -> None:
     argv = sys.argv[1:]
-    if not argv or argv[0] in ("-h", "--help"):
-        cmd_run(["-h"])
+    if not argv:
+        cmd_run([])
+        return
     first, rest = argv[0], argv[1:]
     if first == "--version":
         print(f"hive {__version__}")
     elif first == "run":
         cmd_run(rest)
     elif first == "chat":
-        cmd_chat(rest)
+        raise SystemExit("`hive chat` was removed: run `hive` (add -d DIR or a goal), which opens Claude Code with the hive loaded.")
     elif first in ("waggle", "retro"):
-        cmd_chat(rest, first_prompt="", prog=f"hive {first}")
+        cmd_waggle(rest, prog=f"hive {first}")
     elif first == "init":
         cmd_init(rest)
     elif first == "models":

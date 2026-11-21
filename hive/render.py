@@ -20,6 +20,8 @@ from claude_agent_sdk import (
 
 from hive.pricing import Tokens
 
+from hivecore import stage_of  # noqa: F401 - re-exported
+
 AGENT_TOOLS = ("Agent", "Task")
 _SUMMARY_RE = re.compile(r"```hive-summary\s*\n.*?```", re.S)
 _TAG_RE = re.compile(r"<([a-z-]+)>.*?</\1>", re.S)
@@ -46,17 +48,6 @@ class Dispatch:
     stage: str
     description: str
     status: str = "running"
-
-
-def stage_of(agent: str, label: str) -> str:
-    agent = agent.rsplit(":", 1)[-1]
-    if agent == "reviewer" or label.startswith("R"):
-        return "review"
-    if label.startswith("F"):
-        return "fix"
-    if agent == "scout" or label.startswith("S"):
-        return "scout"
-    return "build"
 
 
 def _short(text: str, limit: int = 140) -> str:
@@ -89,6 +80,7 @@ class Tracker:
     result: ResultMessage | None = None
     results: list[ResultMessage] = field(default_factory=list)
     started: float = field(default_factory=time.time)
+    ended: float | None = None   # set when the tracker is rebuilt from a finished transcript
     _pending_checks: dict[str, str] = field(default_factory=dict)
     _seen_messages: set[str] = field(default_factory=set)
 

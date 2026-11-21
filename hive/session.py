@@ -43,10 +43,7 @@ class Job:
     budget: float | None = 5.0
     compare: list[str] = field(default_factory=list)
     verbose: bool = False
-    waggle: bool = True   # run a retro after each finished job
-
-
-WAGGLE_PROMPT = "/haiku-hive:waggle"
+    waggle: bool = True   # interactive: the Queen runs a retro after each finished job
 
 
 def plugin_for(workers: models.Model) -> Path:
@@ -155,7 +152,7 @@ def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: Sta
     return {
         "id": run_dir.name,
         "started_at": started,
-        "ended_at": time.time(),
+        "ended_at": tracker.ended or time.time(),
         "goal": job.goal,
         "folders": [str(f) for f in job.folders],
         "project_dir": str(pdir),

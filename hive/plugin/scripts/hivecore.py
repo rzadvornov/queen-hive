@@ -32,6 +32,18 @@ PROFILE_TEMPLATE = """# Project profile
 ## Notes
 """
 
+def stage_of(agent: str, label: str) -> str:
+    """The hive stage of a bee, from its agent type and brief label (S1, B2, R-arch, F1)."""
+    agent = agent.rsplit(":", 1)[-1]
+    if agent == "reviewer" or label.startswith("R"):
+        return "review"
+    if label.startswith("F"):
+        return "fix"
+    if agent == "scout" or label.startswith("S"):
+        return "scout"
+    return "build"
+
+
 TEMPLATES = {
     "profile.md": PROFILE_TEMPLATE,
     "progress.md": "# Progress\n\nEach line: date · what was done · how it was verified.\n",

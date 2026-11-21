@@ -71,39 +71,6 @@ def test_policy_decisions(tmp_path, monkeypatch):
     assert isinstance(plan, PermissionResultDeny) and plan.interrupt
 
 
-def test_waggle_runs_after_a_job(tmp_path, monkeypatch):
-    import hive.chat
-    import hive.session
-    from hive import cli, ui
-
-    calls = []
-    monkeypatch.setattr(hive.session, "run_job", lambda job: _record("sess-1"))
-    monkeypatch.setattr(hive.chat, "chat", lambda job, prompt, resume=None: calls.append((prompt, resume)) or _noop())
-    monkeypatch.setattr(ui, "interactive", lambda: True)
-    base = ["goal", "-d", str(tmp_path), "--queen", "sonnet-5.5", "--workers", "haiku-5.5", "--mode", "auto", "--no-init"]
-
-    with pytest.raises(SystemExit):
-        cli.cmd_run(base)
-    assert calls == [("/haiku-hive:waggle", "sess-1")]             # resumes the job's own session
-
-    with pytest.raises(SystemExit):
-        cli.cmd_run([*base, "--no-waggle"])
-    monkeypatch.setattr(ui, "interactive", lambda: False)
-    with pytest.raises(SystemExit):
-        cli.cmd_run(base)
-    assert len(calls) == 1                                          # off by flag, and without a terminal
-
-
-def _record(session_id):
-    async def run():
-        return {"session_id": session_id, "acceptance": {"passed": True}, "status": "done"}
-    return run()
-
-
-async def _noop():
-    return None
-
-
 def test_settings_confirm_then_configure(tmp_path, monkeypatch):
     import argparse
 
@@ -148,36 +115,6 @@ def test_ask_folder(tmp_path, monkeypatch):
     assert folders.ask_folder(tmp_path) == other.resolve()          # not a folder: asks again, then a path
     monkeypatch.setattr(ui, "interactive", lambda: False)
     assert folders.ask_folder(tmp_path) == tmp_path.resolve()       # no terminal: no question
-
-
-def test_waggle_does_not_loop_and_may_edit_the_hive(tmp_path, monkeypatch):
-    import hive.chat
-    from hive import PLUGIN_DIR, models
-    from hive.session import Job
-
-    turns = []   # (prompt's first line, retro permission during the turn)
-
-    async def converse(client, prompt, tracker):           # the Queen ends every turn with a hive-summary block
-        turns.append((prompt.splitlines()[0], session.policy.retro))
-        tracker.last_queen_text = 'Done.\n```hive-summary\n{"status": "done"}\n```'
-
-    monkeypatch.setattr(hive.chat, "converse", converse)
-    job = Job(goal="", folders=[tmp_path], queen=models.get("sonnet-5.5"), workers=models.get("haiku-5.5"), mode="auto")
-    session = hive.chat.ChatSession(job)
-    session.policy = Policy("auto", [tmp_path])
-
-    asyncio.run(session.turn("add a feature"))
-    assert turns == [("add a feature", False), ("/haiku-hive:waggle", True)]   # one retro, then back to the user
-    asyncio.run(session.turn("apply 1"))
-    assert turns[-1] == ("apply 1", True) and len(turns) == 3      # applying edits: allowed, and no new retro
-    asyncio.run(session.turn("next goal"))
-    assert turns[-2:] == [("next goal", False), ("/haiku-hive:waggle", True)]
-
-    rules = {"file_path": str(PLUGIN_DIR / "rules" / "queen.md")}
-    session.policy.retro = False
-    assert isinstance(asyncio.run(session.policy.can_use_tool("Edit", rules, None)), PermissionResultDeny)
-    session.policy.retro = True
-    assert isinstance(asyncio.run(session.policy.can_use_tool("Edit", rules, None)), PermissionResultAllow)
 
 
 def test_tilde_paths_are_expanded(tmp_path, monkeypatch):

@@ -6,14 +6,12 @@ A Queen model plans, writes briefs and checks the work. Cheap **Haiku worker bee
 hive "Fix the failing tests in ~/projects/api"
 ```
 
+`hive` opens Claude Code with the Queen's rules and the bees loaded, so you work in the interface you already know. When you exit, it checks the result and reports each job:
+
 ```
-👑 Queen: Claude Opus 5.5 · 🐝 bees: Claude Haiku 5.5 · mode: auto · review: full
-👑 → 🔨 builder   B1 fix date parsing
-👑 🔍 $ npm test
-   ✅ Tests: 42 passed
-👑 → 🧐 reviewer  R-correctness review fix
-👑 → 🧐 reviewer  R-arch review fix
-...
+🐝 Hive (Claude Opus 5.5 + Claude Haiku 5.5)   ✅   $0.41   2.1m
+   └ queen  ≈$0.36 · build ≈$0.01 · review ≈$0.04
+acceptance ✅ $ npm test
 🐝 Hive $0.41 vs Claude Opus 5.5 alone $0.97 (measured) → saved 58%
 ```
 
@@ -62,7 +60,9 @@ mkdir -p ~/.local/bin && ln -s ~/the-hive/.venv/bin/hive ~/.local/bin/hive  # Li
 
 ```bash
 hive models --check          # which Queens your login can use
+hive                         # pick a folder, then work in Claude Code
 hive "Explain how this project is structured" -d ~/some/project
+hive "Add a /health endpoint" --headless --done "npm test"   # scripts and CI: no interface, stops at the end
 hive dashboard               # live view, history, comparisons (runs in the background)
 hive dashboard down          # stop the dashboard
 ```
@@ -72,7 +72,7 @@ The Hive signs in with your Claude Code login or `ANTHROPIC_API_KEY`.
 ## What you get
 
 - **Choose your Queen:** Fable 5.1, Opus 5.5, Sonnet 5.5, Opus 4.8 and others. Bees are Haiku 5.5.
-- **Three ways to run it:** a one-shot CLI, `hive chat`, and the `/haiku-hive:hive` Claude Code plugin.
+- **Runs in Claude Code itself:** `hive` opens the normal Claude Code interface with the Queen's rules and the bees loaded, then reports and records each job when you exit. Scripts and CI get a headless mode (`--headless`), and there's also a `/haiku-hive:hive` plugin command.
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
 - **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
 - **Independent review:** Haiku reviewers check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security). They don't see the builders' reports.

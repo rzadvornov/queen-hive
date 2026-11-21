@@ -6,7 +6,7 @@ from typing import Any
 
 from claude_agent_sdk import PermissionResultAllow, PermissionResultDeny, PermissionUpdate
 
-from hive import ui
+from hive import PLUGIN_DIR, ui
 
 MODES = {
     "plan": "Plan first: the Queen shows her briefs, you approve, then the hive works on its own",
@@ -56,6 +56,7 @@ class Policy:
     folders: list[Path]
     commands: dict[str, str] = field(default_factory=dict)
     approved_plan: str | None = None
+    retro: bool = False   # a retro may edit the hive's own rules and bees in PLUGIN_DIR
     _always: set[str] = field(default_factory=set)
 
     @property
@@ -72,7 +73,8 @@ class Policy:
         cwd = self.folders[0]
         if tool == "ExitPlanMode":
             return await self._review_plan(data)
-        if tool in FILE_TOOLS and not _inside(data.get(FILE_TOOLS[tool], ""), self.folders, cwd):
+        folders = [*self.folders, PLUGIN_DIR] if self.retro else self.folders
+        if tool in FILE_TOOLS and not _inside(data.get(FILE_TOOLS[tool], ""), folders, cwd):
             if self.mode != "ask":
                 return PermissionResultDeny(message="Outside the folders granted to the hive. Ask the user to add it with -d.")
             return await self._ask(tool, data, context)

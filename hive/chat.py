@@ -6,7 +6,7 @@ from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
 
-from hive import memory, models, stats, verify
+from hive import PLUGIN_DIR, memory, models, stats, verify
 from hive.folders import start_point
 from hive.models import choose_queen
 from hive.modes import MODES, Policy, choose_mode
@@ -53,6 +53,11 @@ class ChatSession:
     async def turn(self, prompt: str) -> None:
         is_waggle = prompt.startswith(WAGGLE_PROMPT)
         follows_waggle, self.last_was_waggle = self.last_was_waggle, is_waggle
+        if self.policy:   # the retro and the reply approving its items may edit the hive's rules
+            self.policy.retro = is_waggle or follows_waggle
+        if is_waggle:
+            prompt += (f"\nThe hive's rules and bees to edit are in {PLUGIN_DIR} (rules/queen.md, agents/<name>.md). "
+                       "Edit them there, not in a copy.")
         run_dir = new_run_dir(self.pdir)
         log = EventLog(run_dir / "events.jsonl")
         started = time.time()

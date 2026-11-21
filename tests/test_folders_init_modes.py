@@ -150,24 +150,31 @@ def test_ask_folder(tmp_path, monkeypatch):
     assert folders.ask_folder(tmp_path) == tmp_path.resolve()       # no terminal: no question
 
 
-def test_waggle_does_not_loop(tmp_path, monkeypatch):
+def test_waggle_does_not_loop_and_may_edit_the_hive(tmp_path, monkeypatch):
     import hive.chat
-    from hive import models
+    from hive import PLUGIN_DIR, models
     from hive.session import Job
 
-    prompts = []
+    turns = []   # (prompt's first line, retro permission during the turn)
 
     async def converse(client, prompt, tracker):           # the Queen ends every turn with a hive-summary block
-        prompts.append(prompt)
+        turns.append((prompt.splitlines()[0], session.policy.retro))
         tracker.last_queen_text = 'Done.\n```hive-summary\n{"status": "done"}\n```'
 
     monkeypatch.setattr(hive.chat, "converse", converse)
     job = Job(goal="", folders=[tmp_path], queen=models.get("sonnet-5.5"), workers=models.get("haiku-5.5"), mode="auto")
     session = hive.chat.ChatSession(job)
+    session.policy = Policy("auto", [tmp_path])
 
     asyncio.run(session.turn("add a feature"))
-    assert prompts == ["add a feature", "/haiku-hive:waggle"]      # one retro after the job, then back to the user
+    assert turns == [("add a feature", False), ("/haiku-hive:waggle", True)]   # one retro, then back to the user
     asyncio.run(session.turn("apply 1"))
-    assert prompts[-1] == "apply 1" and len(prompts) == 3          # applying the retro's edits starts no new retro
+    assert turns[-1] == ("apply 1", True) and len(turns) == 3      # applying edits: allowed, and no new retro
     asyncio.run(session.turn("next goal"))
-    assert prompts[-2:] == ["next goal", "/haiku-hive:waggle"]     # the next real job gets its retro
+    assert turns[-2:] == [("next goal", False), ("/haiku-hive:waggle", True)]
+
+    rules = {"file_path": str(PLUGIN_DIR / "rules" / "queen.md")}
+    session.policy.retro = False
+    assert isinstance(asyncio.run(session.policy.can_use_tool("Edit", rules, None)), PermissionResultDeny)
+    session.policy.retro = True
+    assert isinstance(asyncio.run(session.policy.can_use_tool("Edit", rules, None)), PermissionResultAllow)

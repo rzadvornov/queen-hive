@@ -212,3 +212,74 @@ def _price(traces: list[JobTrace], other: JobStats, exact: float | None, session
         tracker.ended = tracker.ended or tracker.started
         tracker.result = Result(session_id=session_id, total_cost_usd=estimate * factor,
                                 duration_ms=int((tracker.ended - tracker.started) * 1000))
+
+
+# --- other providers' logs ----------------------------------------------------
+# Codex and Gemini sessions are read into a flat list of events, then cut into jobs here like a
+# Claude Code transcript: a job runs from the user's goal to the Queen's hive-summary block.
+#   {"t": "prompt", "text"}                    the user typed something
+#   {"t": "usage", "model", "tokens"}          one model request of the Queen
+#   {"t": "text", "text"}                      the Queen wrote something
+#   {"t": "dispatch", "id", "agent", "brief"}  the Queen sent a bee
+#   {"t": "dispatched", "id", "ok"}            the bee's result came back
+#   {"t": "check", "command", "ok"}            the Queen ran a shell command
+# Every event may carry "ts". Bee usage comes separately as (brief, agent, model, tokens, ts).
+
+
+def from_events(events: list[dict], bees: list[tuple[str, str, str, Tokens, float | None]],
+                session_id: str) -> list[JobTrace]:
+    traces: list[JobTrace] = []
+    current: JobTrace | None = None
+    other = JobStats()
+    for event in events:
+        kind, ts = event.get("t"), event.get("ts")
+        if kind == "prompt":
+            if current is None:
+                current = JobTrace(event.get("text", ""), JobStats())
+                current.tracker.started = ts or current.tracker.started
+            continue
+        tracker = current.tracker if current else other
+        if ts:
+            tracker.ended = ts
+        if kind == "usage":
+            tracker.usage.setdefault(("queen", event["model"]), Tokens()).add(event["tokens"])
+        elif kind == "text" and event.get("text", "").strip():
+            tracker.last_queen_text = event["text"]
+            summary = verify.parse_summary(event["text"])
+            if summary is not None and current:
+                current.summary = summary
+                traces.append(current)
+                current = None
+        elif kind == "dispatch" and current:
+            brief = event.get("brief", "")
+            label = label_of(brief, f"#{len(tracker.dispatches) + 1}")
+            agent = event.get("agent") or "?"
+            tracker.dispatches[event.get("id") or label] = Dispatch(label, agent, stage_of(agent, label), _first_line(brief))
+            tracker.label_counts[label] = tracker.label_counts.get(label, 0) + 1
+        elif kind == "dispatched" and current and event.get("id") in tracker.dispatches:
+            tracker.dispatches[event["id"]].status = "reported" if event.get("ok", True) else "failed"
+        elif kind == "check" and current and "/.hive/" not in event.get("command", ""):
+            tracker.checks.append({"command": event.get("command", ""), "ok": bool(event.get("ok"))})
+    if current and current.tracker.dispatches:
+        traces.append(current)
+
+    for brief, agent, model, tokens, ts in bees:   # each bee belongs to the job running when it worked
+        owner = next((t for t in reversed(traces) if ts is None or t.tracker.started <= ts), traces[0] if traces else None)
+        if owner:
+            label = label_of(brief)
+            owner.tracker.usage.setdefault((stage_of(agent or "?", label), model), Tokens()).add(tokens)
+    _price(traces, other, None, session_id)
+    return traces
+
+
+def match_brief(prompt: str, agent: str, briefs: dict[str, tuple[str, str]]) -> tuple[str, str]:
+    """(brief, agent) a bee worked on: the Queen's brief whose first line its prompt contains, else its own prompt."""
+    for brief, brief_agent in briefs.values():
+        first = _first_line(brief)
+        if first and first in prompt:
+            return brief, agent or brief_agent
+    return prompt, agent
+
+
+def _first_line(text: str) -> str:
+    return next((line.strip() for line in text.splitlines() if line.strip()), "")

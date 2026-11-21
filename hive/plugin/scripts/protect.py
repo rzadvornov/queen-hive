@@ -7,6 +7,10 @@ git rm/mv/checkout/restore). Reading or running protected files is allowed.
 
 Scouts and reviewers are read-only: any file edit by them is denied, and so is a shell
 write outside the temp folders.
+
+The same script guards Codex (apply_patch, Bash) and Gemini CLI sessions (write_file, replace,
+run_shell_command; a BeforeTool event, answered with {"decision": "deny"}). The Gemini CLI doesn't
+say which sub-agent calls a tool, so there the read-only bees rely on their tool lists.
 """
 
 import json
@@ -17,7 +21,11 @@ from pathlib import Path
 
 from hivecore import protecting_rule
 
-FILE_TOOLS = {"Write": "file_path", "Edit": "file_path", "MultiEdit": "file_path", "NotebookEdit": "notebook_path"}
+FILE_TOOLS = {"Write": "file_path", "Edit": "file_path", "MultiEdit": "file_path", "NotebookEdit": "notebook_path",
+              "write_file": "file_path", "replace": "file_path"}
+SHELL_TOOLS = {"Bash", "run_shell_command"}
+_PATCH_FILE = re.compile(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+?)\s*$", re.M)
+GEMINI = False   # set from the event name: Gemini expects another answer format
 SEPARATORS = {";", "&&", "||", "|", "&"}
 ALL_ARGS = {"rm", "mv", "tee", "touch", "truncate", "unlink", "rmdir", "shred", "chmod", "chown"}
 GIT_WRITES = {"rm", "mv", "checkout", "restore"}
@@ -27,6 +35,9 @@ _REDIRECT = re.compile(r"^(\d*|&)>>?(.*)$")   # >, >>, 2>, &>, and attached form
 
 
 def deny(reason: str) -> None:
+    if GEMINI:
+        print(json.dumps({"decision": "deny", "reason": reason}))
+        sys.exit(0)
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -103,25 +114,40 @@ def write_targets(command: str) -> list[str]:
     return targets
 
 
+def patch_targets(tool_input) -> list[str]:
+    """Files a Codex apply_patch call adds, changes, deletes or moves to."""
+    patch = tool_input.get("command") or tool_input.get("input") or tool_input.get("patch") or ""
+    return _PATCH_FILE.findall(patch if isinstance(patch, str) else " ".join(map(str, patch)))
+
+
+def shell_command(tool_input) -> str:
+    command = tool_input.get("command") or tool_input.get("cmd") or ""
+    return shlex.join(command) if isinstance(command, list) else str(command)
+
+
 def main() -> None:
+    global GEMINI
     data = json.load(sys.stdin)
+    GEMINI = data.get("hook_event_name") == "BeforeTool"
     tool = data.get("tool_name", "")
     tool_input = data.get("tool_input") or {}
     cwd = Path(data.get("cwd") or ".")
+    edits = ([tool_input.get(FILE_TOOLS[tool])] if tool in FILE_TOOLS and tool_input.get(FILE_TOOLS[tool])
+             else patch_targets(tool_input) if tool == "apply_patch" else [])
 
     bee = (data.get("agent_type") or "").rsplit(":", 1)[-1]
     if bee in READ_ONLY_BEES:
-        if tool in FILE_TOOLS:
+        if edits:
             deny(f"The Hive: the {bee} bee is read-only. Report what should change instead of changing it.")
-        if tool == "Bash":
-            for target in write_targets(tool_input.get("command", "")):
+        if tool in SHELL_TOOLS:
+            for target in write_targets(shell_command(tool_input)):
                 if not str(Path(target).expanduser()).startswith(SCRATCH):
                     deny(f"The Hive: the {bee} bee is read-only and may write only to temp folders, not to {target}.")
 
-    if tool in FILE_TOOLS and tool_input.get(FILE_TOOLS[tool]):
-        check_path(tool_input[FILE_TOOLS[tool]], cwd)
-    elif tool == "Bash":
-        for target in write_targets(tool_input.get("command", "")):
+    for target in edits:
+        check_path(target, cwd)
+    if tool in SHELL_TOOLS:
+        for target in write_targets(shell_command(tool_input)):
             check_path(target, cwd)
 
 

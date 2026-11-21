@@ -1,12 +1,12 @@
 # 🐝 The Hive
 
-A Queen model plans, writes briefs and checks the work. Cheap **Haiku worker bees** build, scout and review. It works on any folder and any stack, with goals in any language. An **independent review** runs after every job, and the **statistics** show what the job cost compared with a single model doing it alone.
+A Queen model plans, writes briefs and checks the work. Cheap **worker bees** build, scout and review. It runs on **Claude** (in Claude Code), **GPT** (in OpenAI's Codex CLI) or **Gemini** (in the Gemini CLI). It works on any folder and any stack, with goals in any language. An **independent review** runs after every job, and the **statistics** show what the job cost compared with a single model doing it alone.
 
 ```
 hive "Fix the failing tests in ~/projects/api"
 ```
 
-`hive` opens Claude Code with the Queen's rules and the bees loaded, so you work in the interface you already know. When you exit, it checks the result and reports each job:
+`hive` opens your provider's own CLI with the Queen's rules and the bees loaded, so you work in the interface you already know. When you exit, it checks the result and reports each job:
 
 ```
 🐝 Hive (Claude Opus 5.5 + Claude Haiku 5.5)   ✅   $0.41   2.1m
@@ -19,7 +19,13 @@ acceptance ✅ $ npm test
 
 - **Python 3.10 or newer**
 - **macOS or Linux**
-- **Claude Code** ([install](https://code.claude.com)) with your login, or an `ANTHROPIC_API_KEY`. Without Claude Code installed, install the hive with its own copy: `pip install -e ".[bundled]"`.
+- The CLI of the AI you choose, signed in:
+
+| Provider | CLI | Sign in |
+|---|---|---|
+| Claude | [Claude Code](https://code.claude.com), or the hive's own copy: `pip install -e ".[bundled]"` | your Claude Code login, or `ANTHROPIC_API_KEY` |
+| GPT | Codex CLI: `npm install -g @openai/codex` | `codex login` (ChatGPT plan), or `OPENAI_API_KEY`; then trust the hive's hooks once (below) |
+| Gemini | Gemini CLI: `npm install -g @google/gemini-cli` | `GEMINI_API_KEY` from Google AI Studio, or Vertex AI. Google no longer serves the CLI to personal Google logins. |
 
 ### Check your Python version
 
@@ -59,30 +65,50 @@ mkdir -p ~/.local/bin && ln -s ~/the-hive/.venv/bin/hive ~/.local/bin/hive  # Li
 ### First run
 
 ```bash
+hive                         # first run: pick Claude, GPT or Gemini, then a folder
 hive models --check          # which Queens your login can use
-hive                         # pick a folder, then work in Claude Code
+hive provider gemini         # switch provider (or `hive provider` for a menu)
 hive "Explain how this project is structured" -d ~/some/project
 hive "Add a /health endpoint" --headless --done "npm test"   # scripts and CI: no interface, stops at the end
 hive dashboard               # live view, history, comparisons (runs in the background)
 hive dashboard down          # stop the dashboard
 ```
 
-The Hive signs in with your Claude Code login or `ANTHROPIC_API_KEY`.
+The first `hive` asks which AI to use and remembers it. `hive provider` changes it, and `--provider gpt` uses another one for a single run. The hive uses each CLI's own login.
 
 ## What you get
 
-- **Choose your Queen:** Fable 5.1, Opus 5.5, Sonnet 5.5, Opus 4.8 and others. Bees are Haiku 5.5 by default, and any kind of bee can run on another model, including a **local model** through Ollama (`--scout qwen-coder`).
-- **Runs in Claude Code itself:** `hive` opens the normal Claude Code interface with the Queen's rules and the bees loaded, then reports and records each job when you exit. Scripts and CI get a headless mode (`--headless`), and there's also a `/haiku-hive:hive` plugin command.
+- **Choose your AI and your Queen:** Claude (Fable 5.1, Opus 5.5, Sonnet 5.5 …, bees on Haiku 5.5), GPT (GPT-5.5, GPT-5.4 …, bees on GPT-5.4 mini) or Gemini (Gemini 3.1 Pro, 3.8 Flash, bees on Gemini 3 Flash). Any kind of bee can run on another model of the same provider. With Claude, a bee can also run on a **local model** through Ollama (`--scout qwen-coder`).
+- **Runs in the CLI itself:** `hive` opens Claude Code, Codex or the Gemini CLI with the Queen's rules, the bees, the hooks and the skills loaded, then reports and records each job when you exit. Scripts and CI get a headless mode (`--headless`). In Claude Code there's also a `/haiku-hive:hive` plugin command.
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
 - **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
 - **Independent review:** Haiku reviewers check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security). They don't see the builders' reports. `hive review` runs the same review on any diff, branch or PR.
 - **Protected paths:** for example your acceptance tests. A hook blocks file edits to them, and shell writes as far as a parse of the command can tell.
 - **Memory outside your project:** kept in `~/.hive/projects/…`. After each job, a retro (`waggle`) proposes rule fixes and applies only those you approve. Skip it with `--no-waggle`.
-- **Statistics:** tokens and cost per stage. Each job is compared with single models, either estimated or, with `--compare`, as real side-by-side runs.
+- **Statistics:** tokens and cost per stage. Each job is compared with single models, either estimated or, with `--compare` (Claude only for now), as real side-by-side runs.
+
+### Claude, GPT and Gemini compared
+
+| | Claude | GPT | Gemini |
+|---|---|---|---|
+| Runs in | Claude Code | Codex CLI | Gemini CLI |
+| Cost in the report | exact, from Claude Code | estimated from tokens × list price | estimated from tokens × list price |
+| Read-only scouts | hook | Codex sandbox (read-only role) | tool list (no write or shell tools) |
+| Read-only reviewers | hook | hook | instructions only (the CLI doesn't say which bee runs a tool) |
+| `--budget` cap, `--compare`, local bees | yes | no | no |
+
+The hive keeps its own config home for Codex (`~/.hive/codex`) and the Gemini CLI (`~/.hive/gemini`), with your login linked in, so your own `~/.codex` and `~/.gemini` are never edited.
+
+Codex runs hooks only after you trust them, and the hive's hooks write the live log and guard protected paths. After your first GPT run, open Codex once in the hive's home and approve them: `CODEX_HOME=~/.hive/codex codex`. If a hive update changes the hooks, Codex asks again.
+
+With a ChatGPT plan, Codex offers its own models (for example GPT-6-Luna) rather than the API's. The hive reads them from Codex and uses Codex's default; they show as $0, because a plan isn't billed per token. Set prices in `~/.hive/models.json` if you want estimates. GPT and Gemini prices come from price trackers, not the providers' pages: set your own in `~/.hive/models.json` (`{"prices": {"gpt-5.5": {"input": 5, "output": 30, "cache_read": 0.5}}}`).
+
+> GPT and Gemini have been run against signed-in CLIs (Codex 0.171, Gemini CLI 0.65) on small jobs only, so expect rough edges and run `hive doctor` first.
 
 ## Safety: what is enforced and what isn't
 
-- **Permissions are Claude Code's.** Edits outside the granted folders need your approval. In `auto` mode, shell commands run without asking. Use `ask` mode, or `--sandbox` (Claude Code's Bash sandbox: writes only inside the granted folders), on machines that matter.
+- **Permissions are the CLI's.** In Claude Code, edits outside the granted folders need your approval, and in `auto` mode shell commands run without asking. Use `ask` mode, or `--sandbox` (writes only inside the granted folders), on machines that matter. Codex always sandboxes commands to the granted folders. The Gemini CLI runs them unsandboxed unless you pass `--sandbox`.
+- **Your code goes to the provider you chose:** Anthropic, OpenAI or Google, under that provider's terms.
 - **Hooks are guards, not a sandbox.** The protected-path and read-only-bee checks parse shell commands; a command such as `python -c "…"` can write without being noticed. `--sandbox` is the real boundary.
 - **Acceptance commands run on your machine.** After a session the hive itself runs the acceptance commands with your shell, outside Claude Code's permissions. Yours (`--done`, the profile's `test` command) always run. The Queen's own run automatically only in `plan` and `auto` mode without `--sandbox`, where she could have run them in the session anyway. In `ask` mode or with `--sandbox` you're asked first (default no), and headless runs skip them.
 - **Memory feeds every later session.** The Queen writes `known-issues.md`, `decisions.md` and `progress.md`, and they go into her instructions next time. The end-of-session report lists every line she added (📝), so you can catch an instruction planted by code you don't trust.

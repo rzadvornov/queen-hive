@@ -1,0 +1,68 @@
+"""The plugin's content (Queen rules, bees, skills) in the form Codex and the Gemini CLI read.
+
+The Claude Code plugin stays the one source: a retro edits rules/queen.md and agents/<name>.md
+there, and every provider's session is built from them.
+"""
+
+import re
+import shutil
+from pathlib import Path
+
+from hive import PLUGIN_DIR
+
+BEES = ("scout", "builder", "reviewer")
+
+DISPATCH = {
+    "gpt": """Dispatch them with the `spawn_agent` tool. Set `agent_type` to one of these roles:
+- `scout`: read-only research in code, files and on the web.
+- `builder`: makes changes (edits files, runs commands) for one brief.
+- `reviewer`: independent review from one lens. Never edits.
+Use only these three roles, never the built-in ones.
+
+The first line of every brief (the `message`) is a brief ID, then a few words, and `task_name` is the same in
+lowercase with underscores (`s1_auth_entry_points`):
+`S1 find auth entry points`, `B2 add promo module`, `R-arch review structure`, `F1 fix rounding`.""",
+    "gemini": """Dispatch them with the `invoke_agent` tool. Set `agent_name` to one of these sub-agents and `prompt` to the brief:
+- `scout`: read-only research in code, files and on the web.
+- `builder`: makes changes (edits files, runs commands) for one brief.
+- `reviewer`: independent review from one lens. Never edits.
+Use only these three sub-agents, never the built-in ones.
+
+The first line of every brief (the `prompt`) is a brief ID, then a few words:
+`S1 find auth entry points`, `B2 add promo module`, `R-arch review structure`, `F1 fix rounding`.""",
+}
+
+
+def rules_for(provider: str) -> str:
+    """rules/queen.md, with the dispatch instructions of the provider's CLI."""
+    rules = (PLUGIN_DIR / "rules" / "queen.md").read_text()
+    if provider == "claude":
+        return rules
+    rules = rules.replace("They run on Haiku unless your instructions name another model for a bee.",
+                          "They run on a cheaper model, named in your instructions.")
+    rules = re.sub(r"(## Your bees\n).*?(\n- S = scout)", lambda m: m.group(1) + DISPATCH[provider] + m.group(2),
+                   rules, count=1, flags=re.S)
+    return plain(rules)
+
+
+def plain(text: str) -> str:
+    """Claude Code plugin names → the names the other CLIs use (`haiku-hive:scout` → `scout`)."""
+    return re.sub(r"`haiku-hive:([a-z-]+)`", r"`\1`", text).replace("${CLAUDE_PLUGIN_ROOT}", str(PLUGIN_DIR))
+
+
+def bee(name: str) -> tuple[str, str]:
+    """(description, instructions) of a bee, from agents/<name>.md."""
+    text = (PLUGIN_DIR / "agents" / f"{name}.md").read_text()
+    _, front, body = text.split("---", 2)
+    description = next((line.split(":", 1)[1].strip() for line in front.splitlines() if line.startswith("description:")), name)
+    return description, plain(body.strip())
+
+
+def export_skills(dest: Path) -> None:
+    """Copy the plugin's skills to a CLI's skills folder, with paths and bee names it understands."""
+    dest.mkdir(parents=True, exist_ok=True)
+    for skill in sorted((PLUGIN_DIR / "skills").glob("*/SKILL.md")):
+        target = dest / skill.parent.name
+        shutil.rmtree(target, ignore_errors=True)
+        target.mkdir()
+        (target / "SKILL.md").write_text(plain(skill.read_text()))

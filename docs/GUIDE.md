@@ -40,9 +40,34 @@ you ──goal──▶ 👑 Queen ──briefs──▶ 🐝 builders/scouts �
 
 ## 2. Install and sign in
 
-Requirements: Python 3.10+ and macOS or Linux. Every hive session runs in Claude Code, so install it, or install the hive with its own copy (`pip install -e ".[bundled]"`). Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
+Requirements: Python 3.10+ and macOS or Linux, plus the CLI of the AI you use. Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
 
-**Sign in** works the same way as Claude Code: your existing Claude Code login (subscription) or `ANTHROPIC_API_KEY`.
+### Choosing Claude, GPT or Gemini
+
+The first `hive` asks which AI runs the hive and remembers the answer in `~/.hive/state.json`:
+
+| Provider | CLI | Sign in | Default Queen · bees |
+|---|---|---|---|
+| Claude | Claude Code, or `pip install -e ".[bundled]"` | Claude Code login or `ANTHROPIC_API_KEY` | Opus 5.5 · Haiku 5.5 |
+| GPT | Codex CLI (`npm install -g @openai/codex`) | `codex login` (ChatGPT plan) or `OPENAI_API_KEY` | GPT-5.5 · GPT-5.4 mini |
+| Gemini | Gemini CLI (`npm install -g @google/gemini-cli`) | `GEMINI_API_KEY` (Google AI Studio) or Vertex AI | Gemini 3.1 Pro · Gemini 3 Flash |
+
+- `hive provider` shows a menu, and `hive provider gpt` switches directly. Without a terminal, `hive provider` lists the providers and which are installed.
+- `--provider gemini` uses another provider for one run, without changing the saved choice. `--queen gpt-5.4` implies its provider too.
+- Each provider remembers its own last Queen and bee model.
+- Without a terminal and with nothing saved, the hive uses Claude.
+
+For Codex and the Gemini CLI, the hive keeps its own config home: `~/.hive/codex` (as `CODEX_HOME`) and `~/.hive/gemini` (as `GEMINI_CLI_HOME`). It links your login files in from `~/.codex` and `~/.gemini`, and copies your Gemini settings. The Queen's rules, the bees (Codex agent roles, Gemini sub-agents), the hooks and the skills are generated there from the plugin's files, so a retro still edits `rules/queen.md` and `agents/<name>.md` in the plugin. If Codex keeps its login in the system keychain rather than in `auth.json`, sign in once for the hive with `CODEX_HOME=~/.hive/codex codex login`. Google no longer lets the Gemini CLI use personal Google logins, so set `GEMINI_API_KEY`; the hive's Gemini settings then use it.
+
+What differs from Claude:
+- **Cost** in the report is an estimate (tokens × list price), because the CLIs don't report a price. The GPT and Gemini prices come from price trackers: set your own in `~/.hive/models.json` under `"prices"`.
+- **No `--budget` cap, no `--compare` and no local bees** for now.
+- **Read-only bees:** Codex runs scouts in its read-only sandbox, and the protect hook guards reviewers as in Claude Code. The Gemini CLI doesn't tell hooks which sub-agent is calling, so scouts get no write or shell tools, and reviewers are read-only by instruction only.
+- **Protected paths** are guarded by the same hook in all three CLIs: Claude's Write/Edit/Bash, Codex's apply_patch/Bash, and Gemini's write_file/replace/run_shell_command. Codex runs hooks only after you trust them: open `CODEX_HOME=~/.hive/codex codex` once and approve them (again if a hive update changes them). Until then GPT runs have no live log and no protected-path guard.
+- **ChatGPT plan models:** a ChatGPT sign-in can't use the API models (GPT-5.5 …). The hive adds the models your Codex account lists (from its `models_cache.json`), uses Codex's default for the Queen and the bees, and leaves them out of cost estimates until you set prices.
+- GPT and Gemini have run against signed-in CLIs (Codex 0.171, Gemini CLI 0.65) on small jobs. `hive doctor` shows each CLI's version and sign-in state.
+
+**Sign in** to Claude works the same way as Claude Code: your existing Claude Code login (subscription) or `ANTHROPIC_API_KEY`.
 - With a subscription, costs are the API-equivalent price of the same tokens.
 - With an API key, they are real dollars.
 
@@ -110,7 +135,8 @@ The hive never commits. Review the changes with `git diff` and commit them yours
 | `--lenses a,b,c` | Exact lenses: `goal, correctness, tests, arch, perf, rules, security` for code, `facts, goal` for research, `goal, scope` for files. |
 | `--done "CMD"` | Acceptance command that must pass (repeatable). The hive runs it itself after the job, and it decides ✅/❌. Without it, the hive runs the Queen's final checks plus the profile's `test` command. The Queen's checks need your approval in `ask` mode or with `--sandbox` (README → Safety). |
 | `--compare [MODELS]` | Also redo the job with single models alone, in copies of the folder. The default is `sonnet-5.5,opus-4.8,opus-5.5`, and `all` means every available Queen. Asks for confirmation first (`--yes` skips that). |
-| `--headless` | Run without Claude Code's interface and stop at the end. This is the default when there's no terminal. |
+| `--provider claude\|gpt\|gemini` | The AI for this run only (§2). |
+| `--headless` | Run without the CLI's interface and stop at the end. This is the default when there's no terminal. |
 | `--budget USD` | Hard cap for a headless run, 5 by default. Each `--compare` model gets the same cap. Claude Code has no cap for interactive sessions. |
 | `--scout/--builder/--reviewer MODEL` | A model for one kind of bee only, for example a local model (§11). |
 | `--sandbox` | Run shell commands in Claude Code's sandbox: writes only inside the granted folders and temp, network only to allowed domains, so installs may need approval. |
@@ -126,11 +152,12 @@ The exit code is 0 when the last job finished and acceptance passed (or there wa
 | `hive review [TARGET]` | Opens Claude Code on an independent review of existing changes, without building anything: uncommitted changes by default, or a branch, a commit range, or a PR number. |
 | `hive waggle` / `hive retro` | Opens Claude Code with a retro of the project's last run: what went wrong, plus proposed minimal edits to the rules or memory. Nothing changes until you approve an item. |
 | `hive init [DIR] [--no-ai] [--force]` | Draft or redraft a project's profile. `--no-ai` only reads manifest files. |
-| `hive models [--check]` | Catalog, prices and your access, local models included. |
+| `hive models [--check] [--provider P \| --all]` | Catalog, prices and your access for your provider (or all of them), local models included. |
 | `hive models add KEY MODEL_ID [--url URL]` / `hive models remove KEY` | Add or remove a local model (§11). |
 | `hive stats [DIR] [--last]` | Run history: cost, pass rate and average saving. `--last` reprints the last full report. |
 | `hive dashboard [up\|down\|status] [--port 7777] [--no-open] [--foreground]` | The web dashboard (§9). It runs as a background process; `hive dashboard down` stops it. |
 | `hive doctor` | Versions, plugin validation, a transcript check and warnings. |
+| `hive provider [NAME]` | Shows or changes which AI runs the hive: claude, gpt or gemini (§2). |
 | `hive install-plugin` | Installs the plugin into Claude Code (§10). |
 
 ## 5. Choosing a Queen and a mode

@@ -194,7 +194,7 @@ def print_history(folder: Path | None) -> None:
             savings.append(1 - cost / base[1])
             saved = f"{savings[-1]:.0%}"
         project = Path(run["folders"][0]).name[:18]
-        print(f"{when:16} {project:18} {run['queen']['name'][7:23]:16} {run['mode']:5} {_ok(run['acceptance']['passed']):4} "
+        print(f"{when:16} {project:18} {run['queen']['name'].removeprefix('Claude ')[:16]:16} {run['mode']:5} {_ok(run['acceptance']['passed']):4} "
               f"{_usd(cost):>8} {saved:>7}  {run['goal'][:60]}")
     passed = [r["acceptance"]["passed"] for r in runs if r["acceptance"]["passed"] is not None]
     print(f"\n{len(runs)} runs · total {_usd(total)} · pass rate "

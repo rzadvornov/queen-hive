@@ -62,7 +62,8 @@ def test_settings_confirm_then_configure(tmp_path, monkeypatch):
     from hive import cli, memory, models, ui
 
     def args(**kw):
-        return argparse.Namespace(dir=[tmp_path], no_init=True, **{"queen": None, "workers": None, "mode": None, **kw})
+        return argparse.Namespace(dir=[tmp_path], no_init=True, **{"queen": None, "workers": None, "mode": None,
+                                                                             "provider": "claude", **kw})
 
     asked, picks = [], {}
     monkeypatch.setattr(ui, "confirm", lambda q, default=True: asked.append(q) or picks["confirm"])

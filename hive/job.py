@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from hive import PLUGIN_DIR, memory, models, stats, verify
+from hive import PLUGIN_DIR, memory, models, portable, stats, verify
 from hive.folders import StartPoint
 from hive.render import JobStats
 
@@ -46,10 +46,15 @@ class Job:
         """The model of each bee: its role's model, else the workers' model."""
         return {bee: self.roles.get(bee, self.workers) for bee in BEES}
 
+    waggle: bool = True   # interactive: the Queen runs a retro after each finished job
+
+    @property
+    def provider(self) -> str:
+        return self.queen.provider
+
     def local_models(self) -> dict[str, str]:
         """Local model ID → its server, for the bees that run on one."""
         return {m.id: m.base_url for m in self.bee_models().values() if m.local}
-    waggle: bool = True   # interactive: the Queen runs a retro after each finished job
 
 
 def plugin_for(bees: dict[str, models.Model]) -> Path:
@@ -67,7 +72,7 @@ def plugin_for(bees: dict[str, models.Model]) -> Path:
 
 
 def queen_prompt(job: Job, pdir: Path, start: StartPoint | None) -> str:
-    rules = (PLUGIN_DIR / "rules" / "queen.md").read_text()
+    rules = portable.rules_for(job.provider)
     target, others = job.folders[0], job.folders[1:]
     parts = [
         rules,
@@ -84,8 +89,9 @@ def queen_prompt(job: Job, pdir: Path, start: StartPoint | None) -> str:
         if job.done else "",
     ]
     if job.mode == "plan":
-        parts.append("- Plan mode: first explore read-only (you may send scouts), then present your plan with "
-                     "ExitPlanMode as the list of briefs, each with its Done when, plus the review lenses you will use. "
+        present = "with ExitPlanMode" if job.provider == "claude" else "in your reply"
+        parts.append(f"- Plan mode: first explore read-only (you may send scouts), then present your plan {present} "
+                     "as the list of briefs, each with its Done when, plus the review lenses you will use. "
                      "Only after the user approves do you start building.")
     parts.append(memory.run_context(target))
     return "\n".join(p for p in parts if p)
@@ -100,7 +106,7 @@ def new_run_dir(pdir: Path) -> Path:
 def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: StartPoint | None, tracker: JobStats,
                  acceptance_cmds: list[str], results: list[dict], compared: list[dict], summary: dict | None) -> dict:
     hive_data = stats.hive_section(tracker)
-    estimate_keys = list(dict.fromkeys([*models.DEFAULT_COMPARE, job.queen.key]))
+    estimate_keys = list(dict.fromkeys([*models.default_compare(job.provider), job.queen.key]))
     return {
         "id": run_dir.name,
         "started_at": started,
@@ -123,4 +129,5 @@ def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: Sta
         "estimates": stats.estimates(hive_data["tokens"], estimate_keys),
         "compare": compared,
         "prices_as_of": models.PRICES_AS_OF,
+        "provider": job.provider,
     }

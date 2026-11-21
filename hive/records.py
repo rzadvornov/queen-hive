@@ -1,13 +1,14 @@
-"""Turn a finished Claude Code session into run records: acceptance, reports, comparison, memory changes."""
+"""Turn a finished hive session into run records: acceptance, reports, comparison, memory changes."""
 
 import asyncio
 import dataclasses
 import difflib
 import json
 import shutil
+import time
 from pathlib import Path
 
-from hive import compare, memory, stats, transcript, ui, verify
+from hive import compare, memory, providers, stats, transcript, ui, verify
 from hive.render import EventLog
 from hive.job import Job, build_record, new_run_dir
 
@@ -51,17 +52,26 @@ def report_memory_changes(pdir: Path, before: dict[str, str]) -> dict[str, list[
     return added
 
 
+def session_jobs(job: Job, session_id: str, started: float) -> tuple[list, float | None] | None:
+    """The jobs in the session's transcript and its exact cost (Claude Code only); None without a transcript."""
+    if job.provider == "claude":
+        path = transcript.locate(session_id)
+        return transcript.jobs(path) if path else None
+    found = providers.runtime(job.provider).transcript(session_id, started, job.folders[0])
+    return found[:2] if found else None
+
+
 def finish(job: Job, pdir: Path, run_dir: Path, start, session_id: str, workspaces: dict[str, Path],
-           headless: bool = False, memory_before: dict[str, str] | None = None) -> list[dict]:
+           headless: bool = False, memory_before: dict[str, str] | None = None, started: float | None = None) -> list[dict]:
     """Record and report each job of a finished session; returns the run records."""
     if memory_before is not None:
         report_memory_changes(pdir, memory_before)
-    path = transcript.locate(session_id)
-    if not path:
+    found = session_jobs(job, session_id, started or time.time())
+    if not found:
         print("🐝 no transcript for this session, so there is nothing to report.")
         shutil.rmtree(run_dir, ignore_errors=True)
         return []
-    traces, exact = transcript.jobs(path)
+    traces, exact = found
     if not traces:
         shutil.rmtree(run_dir, ignore_errors=True)
         if exact:

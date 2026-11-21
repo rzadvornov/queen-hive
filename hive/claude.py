@@ -1,0 +1,45 @@
+"""Find and run Claude Code, the one runtime behind every hive session."""
+
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+
+def binary() -> str:
+    """Claude Code on PATH, else the copy bundled with the SDK."""
+    found = shutil.which("claude")
+    if found:
+        return found
+    import claude_agent_sdk
+
+    bundled = Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude"
+    if bundled.is_file():
+        return str(bundled)
+    raise SystemExit("Claude Code not found: install it, or reinstall the hive so the SDK brings its own copy.")
+
+
+def print_mode(args: list[str], prompt: str, cwd: Path | None = None, env: dict | None = None,
+               timeout: float | None = None) -> dict:
+    """Run `claude -p` to the end and return its JSON result; failures come back as is_error results."""
+    argv = [binary(), "-p", "--output-format", "json", "--permission-prompts", "none", *args, "--", prompt]
+    try:
+        done = subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout,
+                              stdin=subprocess.DEVNULL)
+    except subprocess.TimeoutExpired:
+        return {"is_error": True, "subtype": "timeout", "result": f"timed out after {timeout}s"}
+    try:
+        return json.loads(done.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        error = (done.stderr or done.stdout).strip().splitlines()
+        return {"is_error": True, "subtype": "no_result", "result": error[-1] if error else f"exit code {done.returncode}"}
+
+
+def installed_plugins(name: str) -> list[str]:
+    """Enabled installed plugins with this name, e.g. ["haiku-hive@hive-local"]."""
+    try:
+        done = subprocess.run([binary(), "plugin", "list", "--json"], capture_output=True, text=True, timeout=30)
+        plugins = json.loads(done.stdout)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return []
+    return [p["id"] for p in plugins if isinstance(p, dict) and p.get("enabled") and p.get("id", "").split("@")[0] == name]

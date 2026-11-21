@@ -71,11 +71,11 @@ The Hive signs in with your Claude Code login or `ANTHROPIC_API_KEY`.
 
 ## What you get
 
-- **Choose your Queen:** Fable 5.1, Opus 5.5, Sonnet 5.5, Opus 4.8 and others. Bees are Haiku 5.5.
+- **Choose your Queen:** Fable 5.1, Opus 5.5, Sonnet 5.5, Opus 4.8 and others. Bees are Haiku 5.5 by default, and any kind of bee can run on another model, including a **local model** through Ollama (`--scout qwen-coder`).
 - **Runs in Claude Code itself:** `hive` opens the normal Claude Code interface with the Queen's rules and the bees loaded, then reports and records each job when you exit. Scripts and CI get a headless mode (`--headless`), and there's also a `/haiku-hive:hive` plugin command.
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
 - **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
-- **Independent review:** Haiku reviewers check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security). They don't see the builders' reports.
+- **Independent review:** Haiku reviewers check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security). They don't see the builders' reports. `hive review` runs the same review on any diff, branch or PR.
 - **Protected paths:** for example your acceptance tests. A hook blocks any edit to them.
 - **Memory outside your project:** kept in `~/.hive/projects/…`. After each job, a retro (`waggle`) proposes rule fixes and applies only those you approve. Skip it with `--no-waggle`.
 - **Statistics:** tokens and cost per stage. Each job is compared with single models, either estimated or, with `--compare`, as real side-by-side runs.

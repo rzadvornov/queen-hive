@@ -174,7 +174,7 @@ async def api_models(request: Request) -> Response:
         "last_queen": state.get("last_queen"),
         "models": [{"key": m.key, "id": m.id, "name": m.name, "input": m.input, "output": m.output,
                     "cache_read": m.cache_read, "role": "queen" if m.queen_effort else "bees", "note": m.note,
-                    "access": models.access(state).get(m.key)} for m in models.CATALOG],
+                    "access": models.access(state).get(m.key)} for m in models.catalog()],
     })
 
 

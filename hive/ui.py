@@ -1,9 +1,6 @@
 """Small terminal helpers: menus and confirmations that degrade gracefully without a TTY."""
 
-import asyncio
 import sys
-
-_prompt_lock = asyncio.Lock()
 
 
 def interactive() -> bool:
@@ -48,9 +45,3 @@ def confirm(question: str, default: bool = True) -> bool:
     hint = "Y/n" if default else "y/N"
     answer = input(f"{question} [{hint}]: ").strip().lower()
     return default if not answer else answer in ("y", "yes", "д", "да")
-
-
-async def ask_async(question: str) -> str:
-    """input() from async code, one question at a time even when bees run in parallel."""
-    async with _prompt_lock:
-        return await asyncio.to_thread(input, question)

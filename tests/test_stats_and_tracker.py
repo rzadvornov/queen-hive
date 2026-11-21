@@ -1,8 +1,6 @@
-from claude_agent_sdk import AssistantMessage, RateLimitEvent, RateLimitInfo, TextBlock, ToolResultBlock, ToolUseBlock, UserMessage
-
 from hive import models, pricing, stats, verify
 from hive.pricing import Tokens
-from hive.render import Tracker, stage_of
+from hive.render import Tracker, format_event, stage_of
 
 
 def test_tokens_from_both_usage_shapes():
@@ -28,13 +26,9 @@ def test_cache_write_ttl_matches_reported_costs():
 
 
 def test_stages_scaled_to_exact_model_totals():
-    t = Tracker(quiet=True)
-    t.handle(msg([ToolUseBlock(id="a1", name="Agent", input={"description": "B1 x", "subagent_type": "haiku-hive:builder"})],
-                 usage={"output_tokens": 10}))
-    t.handle(msg([TextBlock(text="r")], model="claude-haiku-5-5", parent="a1", mid="h1", usage={"output_tokens": 1}))
-    t.handle(msg([ToolUseBlock(id="a2", name="Agent", input={"description": "R-goal y", "subagent_type": "haiku-hive:reviewer"})],
-                 mid="m2", usage={"output_tokens": 10}))
-    t.handle(msg([TextBlock(text="r")], model="claude-haiku-5-5", parent="a2", mid="h2", usage={"output_tokens": 3}))
+    t = Tracker()
+    t.usage = {("queen", "claude-opus-5-5"): Tokens(output=20), ("build", "claude-haiku-5-5"): Tokens(output=1),
+               ("review", "claude-haiku-5-5"): Tokens(output=3)}
     exact = {"claude-haiku-5-5": Tokens(output=400), "claude-opus-5-5": Tokens(output=100)}
     stages = stats.stage_usage(t, exact)
     assert stages["build"]["tokens"]["output"] == 100 and stages["review"]["tokens"]["output"] == 300
@@ -48,35 +42,26 @@ def test_stage_of():
     assert stage_of("haiku-hive:builder", "B2") == "build"
 
 
-def msg(blocks, model="claude-opus-5-5", parent=None, mid="m1", usage=None):
-    return AssistantMessage(content=blocks, model=model, parent_tool_use_id=parent, message_id=mid,
-                            usage=usage or {"input_tokens": 100, "output_tokens": 10})
+def test_returns_count_repeated_build_and_fix_briefs():
+    t = Tracker(label_counts={"B1": 3, "B2": 1, "F1": 2, "R-goal": 2})
+    assert t.returns == 3                                     # B1 twice again, F1 once again; reviews don't count
 
 
-def test_tracker_stages_returns_and_dedupe():
-    t = Tracker(quiet=True)
-    t.handle(msg([ToolUseBlock(id="a1", name="Agent", input={"description": "B1 add promo", "subagent_type": "haiku-hive:builder"})]))
-    t.handle(msg([TextBlock(text="working")], model="claude-haiku-5-5", parent="a1", mid="h1"))
-    t.handle(msg([TextBlock(text="same message, split")], model="claude-haiku-5-5", parent="a1", mid="h1"))
-    t.handle(UserMessage(content=[ToolResultBlock(tool_use_id="a1", content="Changed: x\nResult: failed", is_error=False)]))
-    t.handle(msg([ToolUseBlock(id="a2", name="Agent", input={"description": "B1 retry", "subagent_type": "haiku-hive:builder"}),
-                  ToolUseBlock(id="c1", name="Bash", input={"command": "npm test"})], mid="m2"))
-    t.handle(UserMessage(content=[ToolResultBlock(tool_use_id="c1", content="fail", is_error=True)]))
-    t.handle(RateLimitEvent(rate_limit_info=RateLimitInfo(status="allowed_warning", rate_limit_type="seven_day", utilization=0.8),
-                            uuid="u", session_id="s"))
-    assert t.returns == 1
-    assert t.tokens_by_stage()["build"].input == 100          # duplicate usage counted once
-    assert t.tokens_by_stage()["queen"].input == 200
-    assert t.checks == [{"command": "npm test", "ok": False}]
-    assert t.rate_limits[0]["type"] == "seven_day" and t.rate_limits[0]["utilization"] == 0.8
+def test_headless_event_lines():
+    assert format_event({"kind": "dispatch", "stage": "build", "agent": "haiku-hive:builder", "description": "B1 combo"}) \
+        == "👑 → 🔨 builder   B1 combo"
+    assert format_event({"kind": "check", "command": "npm test", "ok": False, "output": "x\n1 failed"}) == "👑 🔍 $ npm test\n   ❌ 1 failed"
+    assert format_event({"kind": "report", "label": "B1", "ok": True, "text": "Changed: a.js\nResult: passed"}) == "   🐝 B1 📨 Changed: a.js"
+    assert format_event({"kind": "queen_text", "text": "Done.\n```hive-summary\n{}\n```"}) == "👑 Done."
+    assert format_event({"kind": "run_start"}) is None
 
 
 def test_summary_and_acceptance_priority():
-    text = 'Done!\n```hive-summary\n{"briefs": 2, "done_when": ["npm test", "<placeholder>"], "status": "done"}\n```'
+    text = 'Done!\n```hive-summary\n{"done_when": ["npm test", "<placeholder>", "pytest"], "status": "done"}\n```'
     summary = verify.parse_summary(text)
-    assert summary["briefs"] == 2 and verify.strip_summary(text) == "Done!"
+    assert summary["status"] == "done" and verify.strip_summary(text) == "Done!"
     assert verify.acceptance_commands(["make check"], summary, {"test": "pytest"}) == ["make check"]
-    assert verify.acceptance_commands([], summary, {"test": "pytest"}) == ["npm test"]
+    assert verify.acceptance_commands([], summary, {"test": "pytest"}) == ["npm test", "pytest"]   # profile test always, once
     assert verify.acceptance_commands([], None, {"test": "pytest"}) == ["pytest"]
     assert verify.parse_summary("no block") is None
 

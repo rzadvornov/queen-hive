@@ -1,3 +1,4 @@
+import dataclasses
 import datetime as dt
 import json
 import os
@@ -6,7 +7,7 @@ import sys
 
 import pytest
 
-from hive import PLUGIN_DIR, launch, memory, models, transcript
+from hive import PLUGIN_DIR, claude, launch, memory, models, transcript
 from hive.session import Job
 
 OPUS, HAIKU = "claude-opus-5-5", "claude-haiku-5-5"
@@ -133,7 +134,7 @@ def test_finish_without_a_job_saves_nothing(claude_config, tmp_path, capsys):
 
 
 def test_claude_command(tmp_path, monkeypatch):
-    monkeypatch.setattr(launch, "claude_binary", lambda: "claude")
+    monkeypatch.setattr(claude, "binary", lambda: "claude")
     pdir = memory.ensure_project(tmp_path)
     other = tmp_path / "docs"
     other.mkdir()
@@ -152,40 +153,45 @@ def test_claude_command(tmp_path, monkeypatch):
     system = value("--append-system-prompt")
     assert "Queen" in system and str(PLUGIN_DIR) in system and "haiku-hive:waggle" in system
 
-    assert value("--permission-mode", argv("plan")) == "plan"
+    assert value("--permission-mode", argv("plan")) == "plan" and "--settings" not in auto
+    job = Job(goal="", folders=[tmp_path], queen=models.get("opus-5.5"), workers=models.get("haiku-5.5"), mode="auto")
+    installed = launch.command(job, pdir, "", PLUGIN_DIR, "s", ["haiku-hive@hive-local"])
+    assert json.loads(value("--settings", installed)) == {"enabledPlugins": {"haiku-hive@hive-local": False}}
+    boxed = launch.command(dataclasses.replace(job, sandbox=True), pdir, "", PLUGIN_DIR, "s")
+    assert json.loads(value("--settings", boxed)) == {"sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True}}
     ask = argv("ask", waggle=False)
     assert "Bash" not in ask and "--" not in ask                          # risky commands ask; no goal, no prompt
     assert "haiku-hive:waggle" not in value("--append-system-prompt", ask)
 
 
-def test_cli_routes_terminal_to_claude_and_scripts_to_the_sdk(tmp_path, monkeypatch):
-    import hive.session
+def test_cli_routes_terminal_to_claude_and_scripts_to_headless(tmp_path, monkeypatch, capsys):
     from hive import cli, ui
 
     calls = []
-    monkeypatch.setattr(launch, "run", lambda job: calls.append(("claude", job.goal)) or [])
-
-    async def run_job(job):
-        calls.append(("sdk", job.goal))
-        return {"acceptance": {"passed": True}, "status": "done"}
-
-    monkeypatch.setattr(hive.session, "run_job", run_job)
-    base = ["-d", str(tmp_path), "--queen", "opus-5.5", "--workers", "haiku-5.5", "--mode", "auto", "--no-init"]
+    record = {"acceptance": {"passed": True}, "status": "done"}
+    monkeypatch.setattr(launch, "run", lambda job, headless=False: calls.append((headless, job.goal, job.mode, job.waggle)) or [record])
+    base = ["-d", str(tmp_path), "--queen", "opus-5.5", "--workers", "haiku-5.5", "--no-init"]
 
     monkeypatch.setattr(ui, "interactive", lambda: True)
-    for argv in (base, ["add a feature", *base]):
+    for argv in ([*base, "--mode", "plan"], ["add a feature", *base, "--mode", "plan"]):
         with pytest.raises(SystemExit) as done:
             cli.cmd_run(argv)
         assert done.value.code == 0
     with pytest.raises(SystemExit):
-        cli.cmd_run(["add a feature", "--headless", *base])
+        cli.cmd_run(["add a feature", "--headless", *base, "--mode", "plan"])
     monkeypatch.setattr(ui, "interactive", lambda: False)
     with pytest.raises(SystemExit):
-        cli.cmd_run(["add a feature", *base])
-    assert calls == [("claude", ""), ("claude", "add a feature"), ("sdk", "add a feature"), ("sdk", "add a feature")]
+        cli.cmd_run(["add a feature", *base, "--mode", "auto"])
+    assert calls == [(False, "", "plan", True), (False, "add a feature", "plan", True),
+                     (True, "add a feature", "auto", False), (True, "add a feature", "auto", False)]
+    assert "mode plan runs as auto" in capsys.readouterr().out       # nobody to approve a plan headless
 
+    monkeypatch.setattr(launch, "run", lambda job, headless=False: [])
     with pytest.raises(SystemExit) as done:
-        cli.cmd_run(base)                                                   # headless needs a goal
+        cli.cmd_run(["add a feature", *base, "--mode", "auto"])
+    assert done.value.code == 1                                         # headless with no job: failed
+    with pytest.raises(SystemExit) as done:
+        cli.cmd_run([*base, "--mode", "auto"])                          # headless needs a goal
     assert done.value.code == 2
     monkeypatch.setattr(sys, "argv", ["hive", "chat"])
     with pytest.raises(SystemExit, match="was removed"):
@@ -214,12 +220,53 @@ def test_events_hook(tmp_path):
     fire({"hook_event_name": "PostToolUse", "tool_name": "Bash", "agent_id": "a1", "tool_input": {"command": "ls"}})   # a bee's own command
     fire({"hook_event_name": "PostToolUse", "tool_name": "Bash", "tool_input": {"command": "echo x >> ~/.hive/projects/p/progress.md"}})
     fire({"hook_event_name": "SubagentStop", "agent_id": "a1", "agent_transcript_path": str(bee)})
+    fire({"hook_event_name": "SubagentStop", "agent_id": "a1", "agent_transcript_path": str(bee),
+          "last_assistant_message": "- Changed: x\n- Result: failed"})
     fire({"hook_event_name": "Stop", "last_assistant_message": "All done."})
     fire({"hook_event_name": "Stop", "last_assistant_message": "not a hive session"}, env_run_dir=None)
 
     events = [json.loads(line) for line in (run_dir / "events.jsonl").read_text().splitlines()]
-    assert [e["kind"] for e in events] == ["dispatch", "check", "check", "report", "queen_text"]
+    assert [e["kind"] for e in events] == ["dispatch", "check", "check", "report", "report", "queen_text"]
     assert events[0]["stage"] == "build" and events[0]["label"] == "B1"
     assert [e["ok"] for e in events[1:3]] == [True, False] and "1 problem" in events[2]["output"]
-    assert events[3]["id"] == "t1" and "Changed: x" in events[3]["text"]
-    assert events[4]["text"] == "All done."
+    assert events[3]["id"] == "t1" and "Changed: x" in events[3]["text"] and events[3]["ok"] is True
+    assert events[4]["ok"] is False                                       # "Result: failed" marks the report failed
+    assert events[5]["text"] == "All done."
+
+
+def test_review_and_waggle_open_claude_on_their_skills(tmp_path, monkeypatch):
+    from hive import cli
+
+    goals = []
+    monkeypatch.setattr(launch, "run", lambda job: goals.append((job.goal, job.waggle)) or [])
+    base = ["-d", str(tmp_path), "--queen", "opus-5.5", "--workers", "haiku-5.5", "--mode", "auto", "--no-init"]
+    cli.cmd_review(["feature/combo", *base])
+    cli.cmd_review(base)
+    cli.cmd_waggle(base, prog="hive waggle")
+    assert goals == [("/haiku-hive:review feature/combo", False), ("/haiku-hive:review", False),
+                     ("/haiku-hive:waggle Review the last recorded hive run in this project.", False)]
+
+
+def test_headless_follow_prints_complete_lines(tmp_path, capsys):
+    import threading
+
+    log = tmp_path / "events.jsonl"
+    done = {"kind": "dispatch", "stage": "scout", "agent": "haiku-hive:scout", "description": "S1 look — ünïcode"}
+    log.write_text(json.dumps(done, ensure_ascii=False) + "\n" + '{"kind": "queen_text", "text": "half a li')
+    stop = threading.Event()
+    stop.set()
+    launch.follow(log, stop)
+    out = capsys.readouterr().out
+    assert "S1 look — ünïcode" in out and "half a li" not in out       # an unfinished line waits for its end
+
+
+def test_compare_copy_is_protected(tmp_path, hive_home):
+    from hive import compare
+    from hivecore import protecting_rule
+
+    ws = tmp_path / "copy"
+    (ws / "acceptance").mkdir(parents=True)
+    compare._protect(ws, ["acceptance/"])
+    assert protecting_rule(ws / "acceptance" / "a.spec.js") == (ws.resolve(), "acceptance/")
+    compare.cleanup({"opus-5.5": ws})
+    assert not memory.project_dir(ws).exists() and not ws.exists()

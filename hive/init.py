@@ -1,5 +1,6 @@
 """`hive init`: detect a folder's stack and draft its profile in the hive memory."""
 
+import asyncio
 import json
 import os
 import re
@@ -7,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from hive import memory, models, ui
+from hive import PLUGIN_DIR, memory, models, ui
 from hive.folders import is_git
 
 # manifest file → (stack label, {command: value})
@@ -96,40 +97,25 @@ def heuristic_profile(root: Path, found: dict) -> str:
     )
 
 
+def profile_rules() -> str:
+    """The profile rules from the plugin's init skill: one source for `hive init` and the plugin."""
+    text = (PLUGIN_DIR / "skills" / "init" / "SKILL.md").read_text()
+    return text[text.index("## Profile rules"):].strip()
+
+
 async def ai_profile(root: Path, draft: str) -> str | None:
     """Let a Haiku scout refine the heuristic draft by actually reading the project."""
-    from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
+    from hive import claude
 
-    prompt = (
-        f"Project folder: {root}\n\nHere is an automatic draft of the project profile:\n\n{draft}\n\n"
-        "Read the project (README, manifests, top-level folders, test setup) and return an improved profile "
-        "in exactly the same Markdown structure. Rules:\n"
-        "- Stack: languages, frameworks, package manager, runtime versions if stated.\n"
-        "- Folder map: the 5-15 most important folders/files, one line each, what they hold.\n"
-        "- Commands: real commands that work in this project (check package scripts, Makefile, CI config, README).\n"
-        "- Protected paths: only human-owned acceptance/spec folders or files that agents must never edit. "
-        "Do not protect normal unit test folders.\n"
-        "- Notes: conventions worth knowing (style, architecture rules), at most 5 bullets.\n"
-        "Return only the Markdown profile, nothing else."
-    )
-    options = ClaudeAgentOptions(
-        model=models.get(models.DEFAULT_WORKERS).id,
-        cwd=str(root),
-        tools=["Read", "Glob", "Grep"],
-        allowed_tools=["Read", "Glob", "Grep"],
-        max_turns=25,
-        max_budget_usd=0.50,
-        setting_sources=[],
-        env={"CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS": "1"},
-    )
-    text = None
-    try:
-        async for message in query(prompt=prompt, options=options):
-            if isinstance(message, ResultMessage) and not message.is_error:
-                text = message.result
-    except Exception as error:  # noqa: BLE001
-        print(f"   (scout could not draft the profile: {str(error).splitlines()[0] if str(error) else error})")
+    prompt = (f"Project folder: {root}\n\nHere is an automatic draft of the project profile, as the template:\n\n"
+              f"{draft}\n\n{profile_rules()}\n\nReturn only the Markdown profile, nothing else.")
+    args = ["--model", models.get(models.DEFAULT_WORKERS).id, "--tools", "Read", "Glob", "Grep",
+            "--allowedTools", "Read", "Glob", "Grep", "--max-budget-usd", "0.50", "--setting-sources", ""]
+    result = await asyncio.to_thread(claude.print_mode, args, prompt, root, None, 600)
+    if result.get("is_error"):
+        print(f"   (scout could not draft the profile: {str(result.get('result') or result.get('subtype'))[:200]})")
         return None
+    text = result.get("result")
     if not text:
         return None
     fenced = re.search(r"```(?:markdown|md)?\n(.*?)```", text, re.S)

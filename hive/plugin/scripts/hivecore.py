@@ -10,7 +10,7 @@ import os
 import re
 from pathlib import Path
 
-MEMORY_FILES = ("profile.md", "progress.md", "decisions.md", "known-issues.md")
+MEMORY_FILES = ("profile.md", "progress.md", "decisions.md", "known-issues.md", "retro-log.md")
 
 PROFILE_TEMPLATE = """# Project profile
 
@@ -49,6 +49,7 @@ TEMPLATES = {
     "progress.md": "# Progress\n\nEach line: date · what was done · how it was verified.\n",
     "decisions.md": "# Decisions\n\nEach line: the decision · the reason.\n",
     "known-issues.md": "# Known issues\n\nTraps worth remembering, so they aren't hit twice.\n",
+    "retro-log.md": "# Retro log\n\nEach line: date · approved or rejected · the proposed edit, in a few words.\n",
 }
 
 
@@ -141,3 +142,27 @@ def protecting_rule(target: str | Path) -> tuple[Path, str] | None:
             if matches(rel, pattern):
                 return root, pattern
     return None
+
+
+def read(pdir: Path, name: str) -> str:
+    path = pdir / name
+    return path.read_text() if path.exists() else ""
+
+
+def tail(pdir: Path, name: str, lines: int = 10) -> str:
+    return "\n".join(read(pdir, name).splitlines()[-lines:])
+
+
+def run_context(root: str | Path) -> str:
+    """What the Queen needs to know about a project's memory; shared by `hive` and the plugin command."""
+    pdir = ensure_project(root)
+    protected = protected_paths(pdir)
+    return "\n".join([
+        f"- Hive memory folder for this project: {pdir} ({', '.join(TEMPLATES)}). Write memory only there.",
+        f"- Protected paths: {', '.join(protected)}" if protected else "- Protected paths: none listed",
+        "- The profile is still an empty template: draft it first with the `haiku-hive:init` skill."
+        if profile_is_blank(pdir) else "",
+        "\n# Project profile\n" + read(pdir, "profile.md"),
+        "\n# Known issues\n" + read(pdir, "known-issues.md"),
+        "\n# Recent progress\n" + tail(pdir, "progress.md", 10),
+    ])

@@ -10,11 +10,9 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from claude_agent_sdk import ResultMessage
-
 from hive import pricing, verify
 from hive.pricing import Tokens
-from hive.render import AGENT_TOOLS, Dispatch, Tracker, _result_text, stage_of
+from hive.render import AGENT_TOOLS, Dispatch, Result, Tracker, result_text, stage_of
 
 _NOT_PROMPTS = ("<task-notification>", "<system-reminder>", "<local-command", "<command-message>")
 
@@ -115,11 +113,11 @@ def jobs(path: Path) -> tuple[list[JobTrace], float | None]:
     entries = _lines(path)
     traces: list[JobTrace] = []
     current: JobTrace | None = None
-    other = Tracker(quiet=True)   # tokens of turns outside any job (questions, the retro)
+    other = Tracker()   # tokens of turns outside any job (questions, the retro)
     seen: set[str] = set()
 
     def open_job(prompt: str, ts: float | None) -> JobTrace:
-        trace = JobTrace(prompt, Tracker(quiet=True))
+        trace = JobTrace(prompt, Tracker())
         trace.tracker.started = ts or trace.tracker.started
         return trace
 
@@ -192,7 +190,7 @@ def _tool_results(trace: JobTrace, entry: dict) -> None:
         if tool_use_id in trace._pending_checks:
             trace.tracker.checks.append({"command": trace._pending_checks.pop(tool_use_id), "ok": not block.get("is_error")})
         elif tool_use_id in trace.tracker.dispatches:
-            text = _result_text(block.get("content"))
+            text = result_text(block.get("content"))
             bee = trace.tracker.dispatches[tool_use_id]
             bee.status = "launched" if "async_launched" in text else "failed" if block.get("is_error") else "reported"
 
@@ -210,7 +208,5 @@ def _price(traces: list[JobTrace], other: Tracker, exact: float | None, session_
     for trace, estimate in zip(traces, estimates):
         tracker = trace.tracker
         tracker.ended = tracker.ended or tracker.started
-        tracker.result = ResultMessage(
-            subtype="success", duration_ms=int((tracker.ended - tracker.started) * 1000), duration_api_ms=None,
-            is_error=False, num_turns=1, session_id=session_id, total_cost_usd=estimate * factor)
-        tracker.results = [tracker.result]
+        tracker.result = Result(session_id=session_id, total_cost_usd=estimate * factor,
+                                duration_ms=int((tracker.ended - tracker.started) * 1000))

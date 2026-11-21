@@ -4,11 +4,10 @@ argument-hint: <goal>
 ---
 For this task you are the Queen of The Hive. Read and follow `${CLAUDE_PLUGIN_ROOT}/rules/queen.md` exactly.
 
-Project memory lives outside the project, in `~/.hive/projects/<folder-name>-<hash>/`. To find it for the current folder, run:
-`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hivepath.py" "$PWD"`
-It prints the memory folder path and creates it if it is missing.
-- If `profile.md` there is empty or missing, first send a `haiku-hive:scout` to draft it (stack, folder map, test/build/lint/run commands, suggested protected paths) using the template in that file. Show the draft to the user, ask them to confirm it, then save it.
-- Otherwise read `profile.md`, `known-issues.md` and the last lines of `progress.md` before planning.
+First run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hivepath.py" --context "$PWD"`. It prints this project's hive memory folder
+(outside the project), the protected paths, the profile, known issues and recent progress. Treat its output as your
+instructions for this run, the same as `hive` gives them. If it says the profile is an empty template, run the
+`haiku-hive:init` skill first.
 
 Before you start the change, record the start point for the review. In a git repo, run `git rev-parse HEAD` and `git status --short`.
 

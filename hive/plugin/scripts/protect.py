@@ -4,6 +4,9 @@ File tools are checked exactly. For Bash, a command is denied only when a protec
 path is the *target* of a write: a redirect target (`> file`, `>> file`), or a path
 argument of a writing command (rm, mv, cp destination, tee, touch, truncate, sed -i,
 git rm/mv/checkout/restore). Reading or running protected files is allowed.
+
+Scouts and reviewers are read-only: any file edit by them is denied, and so is a shell
+write outside the temp folders.
 """
 
 import json
@@ -18,6 +21,8 @@ FILE_TOOLS = {"Write": "file_path", "Edit": "file_path", "MultiEdit": "file_path
 SEPARATORS = {";", "&&", "||", "|", "&"}
 ALL_ARGS = {"rm", "mv", "tee", "touch", "truncate", "unlink", "rmdir", "shred", "chmod", "chown"}
 GIT_WRITES = {"rm", "mv", "checkout", "restore"}
+READ_ONLY_BEES = {"scout", "reviewer"}
+SCRATCH = ("/tmp/", "/private/tmp/", "/var/folders/", "/dev/null")
 _REDIRECT = re.compile(r"^(\d*|&)>>?(.*)$")   # >, >>, 2>, &>, and attached forms like >file
 
 
@@ -103,6 +108,15 @@ def main() -> None:
     tool = data.get("tool_name", "")
     tool_input = data.get("tool_input") or {}
     cwd = Path(data.get("cwd") or ".")
+
+    bee = (data.get("agent_type") or "").rsplit(":", 1)[-1]
+    if bee in READ_ONLY_BEES:
+        if tool in FILE_TOOLS:
+            deny(f"The Hive: the {bee} bee is read-only. Report what should change instead of changing it.")
+        if tool == "Bash":
+            for target in write_targets(tool_input.get("command", "")):
+                if not str(Path(target).expanduser()).startswith(SCRATCH):
+                    deny(f"The Hive: the {bee} bee is read-only and may write only to temp folders, not to {target}.")
 
     if tool in FILE_TOOLS and tool_input.get(FILE_TOOLS[tool]):
         check_path(tool_input[FILE_TOOLS[tool]], cwd)

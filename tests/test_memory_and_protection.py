@@ -89,3 +89,47 @@ def test_protect_hook(tmp_path, hive_home):
     assert bash("git checkout -- acceptance/a.spec.js") == "deny"
     assert bash("npm test && mv acceptance/a.spec.js old.js") == "deny"
     assert bash("echo x | tee acceptance/new.js") == "deny"
+
+
+def test_read_only_bees(tmp_path, hive_home):
+    import subprocess
+    import sys
+
+    from hive import PLUGIN_DIR
+
+    def decide(agent_type, tool, tool_input):
+        payload = {"tool_name": tool, "tool_input": tool_input, "cwd": str(tmp_path), "agent_type": agent_type}
+        out = subprocess.run([sys.executable, str(PLUGIN_DIR / "scripts" / "protect.py")], input=json.dumps(payload),
+                             capture_output=True, text=True).stdout
+        return "deny" if '"deny"' in out else "pass"
+
+    assert decide("haiku-hive:reviewer", "Edit", {"file_path": str(tmp_path / "a.py")}) == "deny"
+    assert decide("haiku-hive:scout", "Bash", {"command": "echo x > notes.md"}) == "deny"
+    assert decide("haiku-hive:reviewer", "Bash", {"command": "npm test > /tmp/out.txt 2>&1"}) == "pass"   # temp is fine
+    assert decide("haiku-hive:reviewer", "Bash", {"command": "git diff abc123"}) == "pass"
+    assert decide("haiku-hive:builder", "Edit", {"file_path": str(tmp_path / "a.py")}) == "pass"
+
+
+def test_run_context(tmp_path, hive_home):
+    context = memory.run_context(tmp_path)
+    assert str(memory.project_dir(tmp_path)) in context and "retro-log.md" in context
+    assert "haiku-hive:init" in context                          # blank profile: draft it first
+
+
+def test_lastrun_facts(tmp_path, hive_home):
+    root = tmp_path / "shop"
+    root.mkdir()
+    run_dir = memory.ensure_project(root) / "runs" / "20261121-100000-abcd"
+    run_dir.mkdir(parents=True)
+    record = {"goal": "add combo", "status": "done", "queen": {"name": "Claude Opus 5.5"}, "workers": {"name": "Claude Haiku 5.5"},
+              "hive": {"cost_usd": 1.0, "briefs": [{"label": "B1"}, {"label": "B1"}, {"label": "R-goal"}],
+                       "checks": [{"command": "npm test", "ok": False}], "by_stage": {"queen": {"cost_usd_est": 0.9}}},
+              "acceptance": {"results": [{"command": "npm test", "ok": True}]},
+              "summary": {"review": {"lenses": ["goal"], "confirmed": 1, "open": ["rounding on refunds"]}}}
+    (run_dir / "run.json").write_text(json.dumps(record))
+    (run_dir / "events.jsonl").write_text(json.dumps({"kind": "report", "label": "B1", "ok": False, "text": "Result: failed"}) + "\n")
+    out = subprocess.run([sys.executable, str(SCRIPTS_DIR / "lastrun.py"), str(root)], capture_output=True, text=True).stdout
+    assert "returned: B1" in out and "failed checks by the Queen: npm test" in out
+    assert "failed report from B1" in out and "open: rounding on refunds" in out
+    empty = subprocess.run([sys.executable, str(SCRIPTS_DIR / "lastrun.py"), str(tmp_path)], capture_output=True, text=True).stdout
+    assert "No recorded hive run" in empty

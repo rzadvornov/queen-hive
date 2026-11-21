@@ -23,13 +23,12 @@ def passed(results: list[dict]) -> bool | None:
 
 
 def acceptance_commands(explicit: list[str], summary: dict | None, profile_commands: dict[str, str]) -> list[str]:
-    """--done wins; then the Queen's final checks; then the profile's test command."""
+    """--done wins; else the Queen's final checks plus the profile's test command, which always runs when there is one."""
     if explicit:
         return explicit
     from_queen = [c for c in (summary or {}).get("done_when", []) if isinstance(c, str) and c.strip() and "<" not in c]
-    if from_queen:
-        return list(dict.fromkeys(from_queen))
-    return [profile_commands["test"]] if profile_commands.get("test") else []
+    profile = [profile_commands["test"]] if profile_commands.get("test") else []
+    return list(dict.fromkeys(from_queen + profile))
 
 
 def parse_summary(text: str) -> dict | None:

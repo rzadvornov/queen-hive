@@ -1,6 +1,7 @@
-"""Model catalog: who can be Queen, what each model costs, and access checks."""
+"""Model catalog: who can be Queen, what each model costs, local models, and access checks."""
 
 import asyncio
+import json
 import time
 from dataclasses import dataclass
 
@@ -19,6 +20,11 @@ class Model:
     cache_read: float
     queen_effort: str | None = None   # None: not offered as Queen
     note: str = ""
+    base_url: str | None = None       # local models: their own Anthropic-compatible server, e.g. Ollama
+
+    @property
+    def local(self) -> bool:
+        return self.base_url is not None
 
     def cache_write(self, ttl: str = "1h") -> float:
         """Cache writes cost 2x input for the 1-hour TTL (main sessions), 1.25x for 5 minutes (subagents)."""
@@ -38,18 +44,60 @@ CATALOG: tuple[Model, ...] = (
 DEFAULT_QUEEN = "opus-5.5"
 DEFAULT_WORKERS = "haiku-5.5"
 DEFAULT_COMPARE = ("sonnet-5.5", "opus-4.8", "opus-5.5")
+OLLAMA_URL = "http://localhost:11434"
+
+
+def local_path():
+    return memory.hive_home() / "models.json"
+
+
+def local_models() -> list[Model]:
+    """Models served on this machine (Ollama, llama.cpp, LM Studio …), from ~/.hive/models.json. They cost nothing."""
+    try:
+        entries = json.loads(local_path().read_text()).get("local", [])
+    except (OSError, ValueError, AttributeError):
+        return []
+    return [Model(e["key"], e["id"], e.get("name") or e["id"], 0.0, 0.0, 0.0, None, "local", e.get("base_url") or OLLAMA_URL)
+            for e in entries if isinstance(e, dict) and e.get("key") and e.get("id")]
+
+
+def save_local(entries: list[dict]) -> None:
+    path = local_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"local": entries}, indent=2, ensure_ascii=False) + "\n")
+
+
+def add_local(key: str, model_id: str, base_url: str = OLLAMA_URL, name: str | None = None) -> Model:
+    if any(m.key == key for m in CATALOG):
+        raise SystemExit(f"'{key}' is a Claude model's key; pick another name.")
+    entries = [{"key": m.key, "id": m.id, "name": m.name, "base_url": m.base_url} for m in local_models() if m.key != key]
+    save_local([*entries, {"key": key, "id": model_id, "name": name or model_id, "base_url": base_url.rstrip("/")}])
+    return get(key)
+
+
+def remove_local(key: str) -> bool:
+    """Forget a local model; False if there was none with that key."""
+    current = local_models()
+    kept = [m for m in current if m.key != key]
+    save_local([{"key": m.key, "id": m.id, "name": m.name, "base_url": m.base_url} for m in kept])
+    return len(kept) < len(current)
+
+
+def catalog() -> list[Model]:
+    return [*CATALOG, *local_models()]
 
 
 def get(name: str) -> Model:
     """Look up a model by short key, API ID, or an ID with a suffix like '[1m]' or a date."""
     name = name.strip().lower()
-    for model in CATALOG:
-        if name in (model.key, model.id):
+    known = catalog()
+    for model in known:
+        if name in (model.key.lower(), model.id.lower()):
             return model
-    for model in sorted(CATALOG, key=lambda m: -len(m.id)):
-        if name.startswith(model.id):
+    for model in sorted(known, key=lambda m: -len(m.id)):
+        if name.startswith(model.id.lower()):
             return model
-    raise KeyError(f"unknown model '{name}'. Known: {', '.join(m.key for m in CATALOG)}")
+    raise KeyError(f"unknown model '{name}'. Known: {', '.join(m.key for m in known)}")
 
 
 def find(model_id: str) -> Model | None:
@@ -74,36 +122,39 @@ def is_available(state: dict, model: Model) -> bool | None:
 
 
 async def probe(model: Model) -> tuple[bool, str]:
-    """Send a tiny request to see whether the current login can use this model."""
-    from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, query
+    """Send a tiny request to see whether the current login (or, for a local model, its server) can serve this model."""
+    if model.local:
+        return await _probe_local(model)
+    from hive import claude
 
-    options = ClaudeAgentOptions(
-        model=model.id,
-        system_prompt="Reply with the single word OK.",
-        tools=[],
-        max_turns=1,
-        setting_sources=[],
-        env={"CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS": "1"},
-    )
-    served = ""
+    args = ["--model", model.id, "--tools", "", "--setting-sources", "", "--max-budget-usd", "0.05"]
+    result = await asyncio.to_thread(claude.print_mode, args, "Reply with the single word OK.", None, None, 120)
+    if result.get("is_error"):
+        return False, str(result.get("result") or result.get("subtype") or "error").splitlines()[0][:200]
+    served = list(result.get("modelUsage") or {})
+    if served and not any(s.startswith(model.id) for s in served):
+        return False, f"served by {', '.join(served)} instead"
+    return True, ""
+
+
+async def _probe_local(model: Model) -> tuple[bool, str]:
+    import httpx
+
+    request = {"model": model.id, "max_tokens": 8, "messages": [{"role": "user", "content": "Reply with the single word OK."}]}
     try:
-        async for message in query(prompt="OK?", options=options):
-            if isinstance(message, AssistantMessage):
-                if message.error:
-                    return False, message.error
-                served = served or message.model
-            elif isinstance(message, ResultMessage) and message.is_error:
-                return False, (message.result or message.subtype or "error")[:200]
-    except Exception as error:  # noqa: BLE001 - any failure means "no access"
-        return False, str(error).splitlines()[0][:200] if str(error) else type(error).__name__
-    if served and not served.startswith(model.id):
-        return False, f"served by {served} instead"
+        async with httpx.AsyncClient(timeout=300) as client:   # the first request loads the model into memory
+            response = await client.post(f"{model.base_url}/v1/messages", json=request,
+                                         headers={"x-api-key": "local", "anthropic-version": "2023-06-01"})
+    except httpx.HTTPError as error:
+        return False, f"{model.base_url} not reachable ({type(error).__name__}); is the server running?"
+    if response.status_code != 200:
+        return False, f"HTTP {response.status_code}: {response.text[:150]}"
     return True, ""
 
 
 async def check_access(keys: list[str] | None = None) -> dict[str, dict]:
     """Probe models concurrently and cache the result in ~/.hive/state.json."""
-    chosen = [get(k) for k in keys] if keys else [m for m in CATALOG if m.queen_effort or m.key == DEFAULT_WORKERS]
+    chosen = [get(k) for k in keys] if keys else [m for m in catalog() if m.queen_effort or m.key == DEFAULT_WORKERS or m.local]
     results = await asyncio.gather(*(probe(m) for m in chosen))
     state = memory.load_state()
     now = int(time.time())
@@ -136,7 +187,7 @@ def choose_workers(default: str | None = None) -> Model:
     from hive import ui
 
     state = memory.load_state()
-    return get(ui.choose("🐝 Choose the bee model:", _menu(list(CATALOG), state),
+    return get(ui.choose("🐝 Choose the bee model:", _menu(catalog(), state),
                          default or state.get("workers") or DEFAULT_WORKERS))
 
 

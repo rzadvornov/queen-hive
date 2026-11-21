@@ -6,6 +6,7 @@ Stdlib only, and never blocks anything: every path ends with exit code 0.
 
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -36,6 +37,11 @@ def last_text(path: Path) -> str:
         if any(t.strip() for t in texts):
             return "\n".join(texts)
     return ""
+
+
+def failed(report: str) -> bool:
+    """A builder's report ends with "Result: passed" or "Result: failed"."""
+    return bool(re.search(r"^\W*result\W+failed\b", report, re.I | re.M))
 
 
 def bee_meta(data: dict) -> tuple[dict, Path | None]:
@@ -80,7 +86,8 @@ def handle(run_dir: Path, data: dict) -> None:
         label = description.split()[0] if description else "#"
         text = data.get("last_assistant_message") or (last_text(path) if path else "")
         emit(run_dir, "report", id=meta.get("toolUseId"), label=label,
-             stage=stage_of(meta.get("agentType") or data.get("agent_type") or "?", label), ok=True, text=text[-4000:])
+             stage=stage_of(meta.get("agentType") or data.get("agent_type") or "?", label), ok=not failed(text),
+             text=text[-4000:])
     elif event == "Stop":
         text = data.get("last_assistant_message") or last_text(Path(data.get("transcript_path") or ""))
         if text:

@@ -16,7 +16,7 @@ Start every Agent `description` with a brief ID, then a few words:
 
 At most 5 bees can run at once. Dispatch larger reviews in waves of up to 5.
 Bees see only the prompt you give them. Put every path, constraint and expected output in the brief.
-Bees run in the background. Always wait for each report before you accept, verify or finish.
+If a bee runs in the background, wait for its report before you accept, verify or finish.
 
 ## Brief template (at most 10 lines)
 ```
@@ -61,10 +61,11 @@ After the fixes, re-review only the affected lenses. **At most 2 review rounds.*
 - At the end, append to the memory folder: one line to `progress.md` (date, what was done, how it was verified). Add any new decision to `decisions.md`, and any new trap to `known-issues.md`. Never write hive memory into the project itself.
 
 ## Final block
-End your last message with exactly one fenced block, so the hive can record statistics:
+End your last message with exactly one fenced block, so the hive can record statistics. The hive counts briefs and returns itself.
+`done_when` lists the commands that prove the whole goal works (the project's real test command, not `ls` or `cat`):
 
 ```hive-summary
-{"briefs": 0, "returns": 0, "done_when": ["<final acceptance command>", "..."],
+{"done_when": ["<final acceptance command>", "..."],
  "review": {"lenses": ["goal", "..."], "rounds": 0, "confirmed": 0, "fixed": 0, "dismissed": 0,
             "suggestions": ["..."], "open": ["..."]},
  "status": "done | needs_user | failed"}

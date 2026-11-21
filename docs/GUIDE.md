@@ -21,14 +21,14 @@
 | Term | What it is |
 |---|---|
 | **👑 Queen** | The model you choose (Fable 5.1, Opus 5.5, Sonnet 5.5, …). It plans, writes briefs, checks results, runs the review and talks to you. It doesn't write code itself, except one- or two-line fixes. |
-| **🐝 Bees** | Haiku 5.5 workers. **scout** researches (read-only), **builder** makes changes, and **reviewer** checks finished work (it never edits). |
+| **🐝 Bees** | Haiku 5.5 workers by default; any bee can run on another model, including a local one (§11). **scout** researches, **builder** makes changes and adds tests, and **reviewer** checks finished work. Scouts and reviewers are read-only, enforced by a hook. |
 | **Brief** | A task for one bee, at most 10 lines: *Goal / Read / Don't touch / Done when*. Each brief has an ID: `S1` (scout), `B2` (build), `R-arch` (review lens) or `F1` (fix after review). |
 | **Done when** | A runnable command plus the output it must show, such as `npm test shows 0 failures`. |
 | **Don't trust reports** | The Queen runs every Done-when check herself before accepting a brief. A failing brief goes back to a builder with the error output. **After 3 returns of the same brief she stops and asks you.** |
 | **Independent review** | After the work is accepted, several reviewer bees check it in parallel, one *lens* each. They see only the goal, the change set and the project memory, **not** the builders' reports. The Queen triages every finding: false positives are dismissed with a reason, real defects get fix briefs, and opinions come to you as suggestions. At most 2 review rounds. |
 | **Protected paths** | Files the hive must never change, typically your acceptance tests. A hook blocks every edit to them; reading and running them is fine. |
-| **Project memory** | `~/.hive/projects/<folder>-<hash>/`: `profile.md` (stack, commands, protected paths), `progress.md`, `decisions.md`, `known-issues.md` and `runs/`. **Nothing is written into your project.** |
-| **Waggle** | A retro after a job (alias `retro`). It runs automatically when a job finishes, proposes small edits to rules or memory based on what went wrong, and applies only the ones you approve. |
+| **Project memory** | `~/.hive/projects/<folder>-<hash>/`: `profile.md` (stack, commands, protected paths), `progress.md`, `decisions.md`, `known-issues.md`, `retro-log.md` (retro proposals you approved or rejected) and `runs/`. **Nothing is written into your project.** |
+| **Waggle** | A retro after a job (alias `retro`). It runs automatically when a job finishes and proposes at most 3 small edits to rules or memory, each with its evidence. It applies only the ones you approve, logs your answers and doesn't propose a rejected edit again. |
 
 What a run looks like:
 
@@ -40,7 +40,7 @@ you ──goal──▶ 👑 Queen ──briefs──▶ 🐝 builders/scouts �
 
 ## 2. Install and sign in
 
-Requirements: Python 3.10+ and macOS or Linux. Claude Code is optional; the SDK ships its own copy of the CLI. Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
+Requirements: Python 3.10+ and macOS or Linux. Every hive session runs in Claude Code; installing it is optional, because the SDK ships its own copy. Checking your Python version, fixing a mismatch and the per-OS install steps are in the [README](../README.md#requirements).
 
 **Sign in** works the same way as Claude Code: your existing Claude Code login (subscription) or `ANTHROPIC_API_KEY`.
 - With a subscription, costs are the API-equivalent price of the same tokens.
@@ -60,7 +60,7 @@ sonnet-5.5   claude-sonnet-5-5    2/10         queen      ✅
 ...
 ```
 
-`hive doctor` shows versions, validates the plugin and warns about environment variables that would override the bees' model.
+`hive doctor` shows versions, validates the plugin, re-reads the last session's transcript (the statistics depend on its format) and warns about environment variables that would override the bees' model.
 
 ## 3. Your first run
 
@@ -108,11 +108,12 @@ The hive never commits. Review the changes with `git diff` and commit them yours
 | `--mode plan\|auto\|ask` | Autonomy mode. Not asked about. With `--queen`, `--workers` and `--mode` all given, nothing is asked. |
 | `--review full\|light\|off` | `full` (default) runs every lens that fits the task, `light` runs only goal + tests, and `off` skips the review (the Queen still verifies every brief). |
 | `--lenses a,b,c` | Exact lenses: `goal, correctness, tests, arch, perf, rules, security` for code, `facts, goal` for research, `goal, scope` for files. |
-| `--done "CMD"` | Acceptance command that must pass (repeatable). The hive runs it itself after the job, and it decides ✅/❌. |
+| `--done "CMD"` | Acceptance command that must pass (repeatable). The hive runs it itself after the job, and it decides ✅/❌. Without it, the hive runs the Queen's final checks plus the profile's `test` command. |
 | `--compare [MODELS]` | Also redo the job with single models alone, in copies of the folder. The default is `sonnet-5.5,opus-4.8,opus-5.5`, and `all` means every available Queen. Asks for confirmation first (`--yes` skips that). |
 | `--headless` | Run without Claude Code's interface and stop at the end. This is the default when there's no terminal. |
 | `--budget USD` | Hard cap for a headless run, 5 by default. Each `--compare` model gets the same cap. Claude Code has no cap for interactive sessions. |
-| `-v` | Headless: show every bee message and tool call. |
+| `--scout/--builder/--reviewer MODEL` | A model for one kind of bee only, for example a local model (§11). |
+| `--sandbox` | Run shell commands in Claude Code's sandbox: writes only inside the granted folders and temp, network only to allowed domains, so installs may need approval. |
 | `--no-init` | Don't draft a profile on first use. |
 | `--no-waggle` | Don't have the Queen run the retro after each finished job. |
 
@@ -122,12 +123,14 @@ The exit code is 0 when the last job finished and acceptance passed (or there wa
 
 | Command | What it does |
 |---|---|
+| `hive review [TARGET]` | Opens Claude Code on an independent review of existing changes, without building anything: uncommitted changes by default, or a branch, a commit range, or a PR number. |
 | `hive waggle` / `hive retro` | Opens Claude Code with a retro of the project's last run: what went wrong, plus proposed minimal edits to the rules or memory. Nothing changes until you approve an item. |
 | `hive init [DIR] [--no-ai] [--force]` | Draft or redraft a project's profile. `--no-ai` only reads manifest files. |
-| `hive models [--check]` | Catalog, prices and your access. |
+| `hive models [--check]` | Catalog, prices and your access, local models included. |
+| `hive models add KEY MODEL_ID [--url URL]` / `hive models remove KEY` | Add or remove a local model (§11). |
 | `hive stats [DIR] [--last]` | Run history: cost, pass rate and average saving. `--last` reprints the last full report. |
 | `hive dashboard [up\|down\|status] [--port 7777] [--no-open] [--foreground]` | The web dashboard (§9). It runs as a background process; `hive dashboard down` stops it. |
-| `hive doctor` | Versions, plugin validation and warnings. |
+| `hive doctor` | Versions, plugin validation, a transcript check and warnings. |
 | `hive install-plugin` | Installs the plugin into Claude Code (§10). |
 
 ## 5. Choosing a Queen and a mode
@@ -202,7 +205,7 @@ It binds to localhost only, it's read-only, and it needs no internet.
 
 ## 10. The Claude Code plugin
 
-The bees, the Queen's rules, the protection hook and the waggle skill live in a Claude Code plugin (`hive/plugin`). The `hive` CLI loads it automatically. To use it inside Claude Code too:
+The bees, the Queen's rules, the hooks and the skills (`waggle`, `review`, `init`) live in a Claude Code plugin (`hive/plugin`). The `hive` CLI loads it automatically. To use it inside Claude Code too:
 
 ```bash
 hive install-plugin
@@ -214,11 +217,13 @@ Then, in any Claude Code session:
 | Command | Effect |
 |---|---|
 | `/haiku-hive:hive <goal>` | The current session becomes the Queen and follows the same rules and memory. The Queen model is your session's model (`/model` to change it). |
+| `/haiku-hive:review [target]` | An independent review of changes by reviewer bees, without building. |
+| `/haiku-hive:init` | Draft or refresh this project's hive profile. |
 | `/haiku-hive:waggle` or `/haiku-hive:retro` | A retro of the current session. `/haiku-hive:hive` runs it by itself when the job finishes, unless you ask it not to ("no waggle"). |
 
 Inside Claude Code, permissions follow Claude Code's own settings, so there's no hive mode question. The protection hook is active there too.
 
-To try it without installing: `claude --plugin-dir ~/the-hive/hive/plugin`.
+To try it without installing: `claude --plugin-dir ~/the-hive/hive/plugin`. Inside `hive` sessions an installed copy is switched off automatically, so nothing loads twice.
 
 ## 11. Customizing bees and rules
 
@@ -226,18 +231,37 @@ To try it without installing: `claude --plugin-dir ~/the-hive/hive/plugin`.
 |---|---|
 | How the Queen works | `hive/plugin/rules/queen.md` |
 | A bee's instructions, tools or effort | `hive/plugin/agents/<bee>.md`. Keep `model:` a full ID such as `claude-haiku-5-5`. |
-| Bee model for one run | `--workers sonnet-5.5`. The hive loads a copy of the plugin with that model swapped in. |
+| Bee model for one run | `--workers sonnet-5.5` for all bees, or `--scout`, `--builder`, `--reviewer` for one kind. The hive loads a copy of the plugin with those models swapped in. |
 | Model prices or new models | `hive/models.py` (`CATALOG`, `PRICES_AS_OF`) |
 | Project facts | `~/.hive/projects/<p>/profile.md`, or `hive init --force` |
-| Retro behavior | `hive/plugin/skills/waggle/SKILL.md` |
+| Retro, review, profile drafting | `hive/plugin/skills/<waggle\|review\|init>/SKILL.md` |
 
 `hive waggle` proposes edits to exactly these files after a session, so let the hive tune itself and approve what makes sense.
+
+### Local models
+
+Bees can run on a model on your own machine, served by Ollama (0.14+), llama.cpp or LM Studio through their Claude-compatible API. Local tokens cost nothing.
+
+```bash
+ollama serve                                   # in another terminal
+hive models add qwen-coder qwen2.5-coder:14b   # --url for a server other than http://localhost:11434
+hive models --check                            # sends one tiny request to the local server
+hive "Map the payment flow" --scout qwen-coder
+```
+
+Claude Code sends all requests to one address, so when a bee is local the hive starts a small router on localhost for the session. Claude requests pass through to Anthropic unchanged, with your login. Requests for the local model go to its server, without your login headers.
+
+Things to know:
+- Anthropic doesn't support non-Claude models in Claude Code, so this can break with a Claude Code update.
+- Small models often fail at tool use. Use a coding model of 14B or more, with a large context window.
+- Start with scouts, which are read-only. Keep reviewers on Claude, because the independent review is only worth as much as the reviewer.
 
 ## 12. Costs and safety
 
 - **Budget:** in headless runs, `--budget` (default $5) is a hard cap, and the run stops with `error_max_budget_usd` when it's reached. Interactive Claude Code sessions have no cap: watch the cost in Claude Code and the report. `--compare` multiplies the worst case by the number of models, and the hive asks before starting.
 - **Guards against runaway spending:** bees can't spawn bees, at most 5 run at once, and Claude Code's built-in subagents are disabled, so every helper is a hive bee on the model you chose.
-- **Containment:** the hive works only in the folders you grant. Shell commands are not sandboxed, though. In `auto` mode a command *can* reach outside the folders. Use `ask` mode on sensitive machines.
+- **Containment:** the hive works only in the folders you grant, and Claude Code asks before edits anywhere else. Shell commands aren't sandboxed by default, so in `auto` mode a command *can* reach outside the folders. Use `--sandbox` (Claude Code's Bash sandbox) or `ask` mode on sensitive machines.
+- **Read-only bees:** a hook denies every file edit by scouts and reviewers, and every shell write outside the temp folders.
 - **Protected paths:** the hook blocks file tools and shell writes (`>`, `rm`, `mv`, `cp` to the path, `tee`, `sed -i`, `git checkout/restore` …) on protected paths. The shell check is a careful parse, not a sandbox.
 - **Git:** work in a git repo. The hive never commits, and the start point of each run is recorded, so `git diff` shows exactly what it did.
 - **Data:** memory and run logs stay in `~/.hive`. The dashboard is local only.

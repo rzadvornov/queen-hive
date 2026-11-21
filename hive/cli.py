@@ -11,7 +11,7 @@ from pathlib import Path
 from hive import PLUGIN_DIR, __version__, memory, models, stats
 from hive.modes import MODES
 
-SUBCOMMANDS = ("run", "init", "models", "stats", "dashboard", "waggle", "retro", "doctor", "install-plugin")
+SUBCOMMANDS = ("run", "review", "init", "models", "stats", "dashboard", "waggle", "retro", "doctor", "install-plugin")
 
 EPILOG = """In a terminal, the hive opens Claude Code with the Queen's rules and the bees loaded.
 Without a terminal (scripts, CI), or with --headless, it runs the goal on its own and prints progress.
@@ -24,7 +24,7 @@ examples:
   hive "Add a /health endpoint" --queen fable-5.1 --compare sonnet-5.5,opus-5.5
   hive stats
 
-other commands: init, models, stats, dashboard, waggle (alias retro), doctor, install-plugin
+other commands: review, init, models, stats, dashboard, waggle (alias retro), doctor, install-plugin
 run `hive <command> -h` for details."""
 
 
@@ -34,13 +34,18 @@ def _job_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--queen", help=f"Queen model ({', '.join(m.key for m in models.queens())}). Default: the last one.")
     parser.add_argument("--workers", default=None, help=f"worker bee model. Default: the last one, else {models.DEFAULT_WORKERS}.")
     parser.add_argument("--mode", choices=list(MODES), help="autonomy mode. Default: the last one.")
+    for bee in ("scout", "builder", "reviewer"):
+        parser.add_argument(f"--{bee}", metavar="MODEL", help=f"model for the {bee} bees only, e.g. a local model "
+                                                              "from `hive models add` (default: the bee model).")
     parser.add_argument("--review", choices=["full", "light", "off"], default="full", help="independent review level (default full).")
     parser.add_argument("--lenses", help="comma-separated review lenses, e.g. goal,correctness,tests,arch,perf,rules,security")
     parser.add_argument("--budget", type=float, default=5.0,
                         help="hard spending cap in USD per headless run and per --compare run (default 5).")
-    parser.add_argument("-v", "--verbose", action="store_true", help="headless: show every bee message and tool call.")
     parser.add_argument("--no-init", action="store_true", help="don't draft a project profile on first use.")
     parser.add_argument("--no-waggle", action="store_true", help="don't run the retro (waggle) after each finished job.")
+    parser.add_argument("--sandbox", action="store_true",
+                        help="run shell commands in Claude Code's sandbox: writes only inside the granted folders and temp, "
+                             "network only to allowed domains (installs may need approval).")
 
 
 def _choose(args, goal: str = "", ask_folder: bool = False):
@@ -76,7 +81,7 @@ def _choose(args, goal: str = "", ask_folder: bool = False):
 
 def cmd_run(argv: list[str]) -> None:
     from hive import launch, ui
-    from hive.session import Job, run_job
+    from hive.session import Job
 
     parser = argparse.ArgumentParser(prog="hive", description="Run the hive: Claude Code with a Queen and Haiku bees.",
                                      epilog=EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -100,6 +105,10 @@ def cmd_run(argv: list[str]) -> None:
     if args.compare and not args.goal:
         parser.error("--compare needs a goal")
     folders, queen, workers, mode = _choose(args, args.goal, ask_folder=not headless)
+    if headless and mode != "auto":
+        print(f"🛡  headless: nobody can approve a plan or a risky action, so mode {mode} runs as auto"
+              + (" (risky actions are refused)." if mode == "ask" else "."))
+        mode = "auto" if mode == "plan" else mode
     compare = _compare_keys(args.compare)
     if compare:
         cap = f"${args.budget:g} each" if args.budget else "no cap"
@@ -107,13 +116,18 @@ def cmd_run(argv: list[str]) -> None:
         if not args.yes and not _confirm("   run the comparison?"):
             compare = []
     job = Job(goal=args.goal, folders=folders, queen=queen, workers=workers, mode=mode, review=args.review,
-              lenses=_split(args.lenses), done=args.done, budget=args.budget, compare=compare, verbose=args.verbose,
-              waggle=not args.no_waggle)
-    if headless:
-        record = asyncio.run(run_job(job))
-        sys.exit(0 if record["acceptance"]["passed"] is not False and record["status"] != "failed" else 1)
-    records = launch.run(job)
-    sys.exit(1 if records and records[-1]["acceptance"]["passed"] is False else 0)
+              lenses=_split(args.lenses), done=args.done, budget=args.budget, compare=compare,
+              waggle=not args.no_waggle and not headless, sandbox=args.sandbox, roles=_roles(args))
+    records = launch.run(job, headless=headless)
+    if headless and not records:
+        sys.exit(1)   # no job came out of it: the run failed
+    last = records[-1] if records else None
+    sys.exit(1 if last and (last["acceptance"]["passed"] is False or last["status"] == "failed") else 0)
+
+
+def _roles(args) -> dict:
+    """Per-bee models from --scout/--builder/--reviewer."""
+    return {bee: models.get(getattr(args, bee)) for bee in ("scout", "builder", "reviewer") if getattr(args, bee, None)}
 
 
 def _compare_keys(value: str | None) -> list[str]:
@@ -154,18 +168,29 @@ def cmd_waggle(argv: list[str], prog: str) -> None:
     args = parser.parse_args(argv)
     folders, queen, workers, mode = _choose(args, ask_folder=True)
     job = Job(goal=_waggle_prompt(folders[0], args.note), folders=folders, queen=queen, workers=workers, mode=mode,
-              review=args.review, lenses=_split(args.lenses), budget=args.budget, waggle=False)
+              review=args.review, lenses=_split(args.lenses), budget=args.budget, waggle=False, roles=_roles(args))
+    launch.run(job)
+
+
+def cmd_review(argv: list[str]) -> None:
+    """An independent review of existing changes, in Claude Code."""
+    from hive import launch
+    from hive.session import Job
+
+    parser = argparse.ArgumentParser(prog="hive review", description="Independent review of changes by reviewer bees; builds nothing.")
+    parser.add_argument("target", nargs="?", default="",
+                        help="what to review: nothing for uncommitted changes, a branch, a commit range, or a PR number/URL.")
+    _job_args(parser)
+    args = parser.parse_args(argv)
+    folders, queen, workers, mode = _choose(args, ask_folder=True)
+    job = Job(goal=f"/haiku-hive:review {args.target}".strip(), folders=folders, queen=queen, workers=workers, mode=mode,
+              review=args.review, lenses=_split(args.lenses), budget=args.budget, waggle=False, roles=_roles(args))
     launch.run(job)
 
 
 def _waggle_prompt(root: Path, note: str) -> str:
-    runs = stats.load_runs([memory.project_dir(root)])
-    if not runs:
-        return f"/haiku-hive:waggle {note}".strip()
-    last = runs[-1]
-    events = Path(last["path"]).with_name("events.jsonl")
-    return (f"/haiku-hive:waggle Review the last hive run in this project: its record is {last['path']} and its event "
-            f"log is {events}. Read them to see what happened (briefs, returns, checks, review findings). {note}").strip()
+    """The skill reads the last recorded run itself (scripts/lastrun.py)."""
+    return f"/haiku-hive:waggle Review the last recorded hive run in this project. {note}".strip()
 
 
 def cmd_init(argv: list[str]) -> None:
@@ -181,21 +206,40 @@ def cmd_init(argv: list[str]) -> None:
 
 
 def cmd_models(argv: list[str]) -> None:
-    parser = argparse.ArgumentParser(prog="hive models", description="Model catalog, prices and your access.")
+    if argv[:1] in (["add"], ["remove"]):
+        return _local_model(argv)
+    parser = argparse.ArgumentParser(prog="hive models", description="Model catalog, prices and your access.",
+                                     epilog="local models: hive models add KEY MODEL_ID [--url URL] · hive models remove KEY")
     parser.add_argument("--check", action="store_true", help="probe each model with a tiny request (costs a fraction of a cent).")
     args = parser.parse_args(argv)
     if args.check:
         print("checking access…")
         asyncio.run(models.check_access())
     state = memory.load_state()
-    print(f"{'model':12} {'id':20} {'in/out $/M':12} {'role':10} access")
-    for m in models.CATALOG:
+    print(f"{'model':12} {'id':22} {'in/out $/M':12} {'role':10} access")
+    for m in models.catalog():
         entry = models.access(state).get(m.key)
         access = "not checked" if entry is None else "✅" if entry["ok"] else f"✗ {entry.get('error', '')[:50]}"
-        role = "queen" if m.queen_effort else "bees"
-        print(f"{m.key:12} {m.id:20} {f'{m.input:g}/{m.output:g}':12} {role:10} {access}")
+        role = "queen" if m.queen_effort else "local bees" if m.local else "bees"
+        print(f"{m.key:12} {m.id:22} {f'{m.input:g}/{m.output:g}':12} {role:10} {access}")
     print(f"\nprices as of {models.PRICES_AS_OF}. Last Queen: {state.get('last_queen', '–')}. "
           + ("" if args.check else "Run `hive models --check` to test access."))
+
+
+def _local_model(argv: list[str]) -> None:
+    parser = argparse.ArgumentParser(prog=f"hive models {argv[0]}", description="Add or remove a local model for bees.")
+    parser.add_argument("key", help="short name for --scout/--builder/--reviewer/--workers, e.g. qwen-coder")
+    if argv[0] == "add":
+        parser.add_argument("model_id", help="the model as the server names it, e.g. qwen2.5-coder:14b")
+        parser.add_argument("--url", default=models.OLLAMA_URL, help=f"Anthropic-compatible server (default {models.OLLAMA_URL})")
+        parser.add_argument("--name", help="display name")
+    args = parser.parse_args(argv[1:])
+    if argv[0] == "remove":
+        print(f"removed {args.key}" if models.remove_local(args.key) else f"no local model called {args.key}")
+        return
+    model = models.add_local(args.key, args.model_id, args.url, args.name)
+    print(f"added {model.key}: {model.id} at {model.base_url}. Check it with `hive models --check`, "
+          f"then use it with e.g. `--scout {model.key}`.")
 
 
 def cmd_stats(argv: list[str]) -> None:
@@ -237,23 +281,45 @@ def cmd_dashboard(argv: list[str]) -> None:
 
 
 def cmd_doctor(argv: list[str]) -> None:
-    import claude_agent_sdk
+    import os
 
-    print(f"hive {__version__} · claude-agent-sdk {getattr(claude_agent_sdk, '__version__', '?')} · python {sys.version.split()[0]}")
-    claude = shutil.which("claude")
-    print(f"claude CLI on PATH: {claude or 'not found (the SDK uses its bundled copy)'}")
-    if claude:
-        out = subprocess.run([claude, "plugin", "validate", str(PLUGIN_DIR)], capture_output=True, text=True)
-        print("plugin validate: " + (out.stdout + out.stderr).strip().splitlines()[-1] if (out.stdout + out.stderr).strip() else "?")
+    from hive import claude
+
+    binary = claude.binary()
+    version = subprocess.run([binary, "--version"], capture_output=True, text=True).stdout.strip()
+    print(f"hive {__version__} · Claude Code {version or '?'} ({binary}) · python {sys.version.split()[0]}")
+    out = subprocess.run([binary, "plugin", "validate", str(PLUGIN_DIR)], capture_output=True, text=True)
+    lines = (out.stdout + out.stderr).strip().splitlines()
+    print("plugin validate: " + (lines[-1] if lines else "?"))
     print(f"plugin: {PLUGIN_DIR}")
+    installed = claude.installed_plugins("haiku-hive")
+    if installed:
+        print(f"installed in Claude Code too: {', '.join(installed)} (switched off inside `hive` sessions)")
     print(f"hive home: {memory.hive_home()}")
     for leftover in ("CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_SUBAGENT_MODEL", "CLAUDE_CODE_EFFORT_LEVEL"):
-        import os
-
         if os.environ.get(leftover):
             print(f"⚠️  {leftover} is set and overrides per-bee settings")
+    print(_transcript_check())
     print(json.dumps(memory.load_state().get("access", {}), indent=1) if memory.load_state().get("access") else
           "model access: not checked (run `hive models --check`)")
+
+
+def _transcript_check() -> str:
+    """Read the last run's Claude Code transcript again: the stats depend on its format, which isn't a stable API."""
+    from hive import transcript
+
+    runs = [r for r in stats.load_runs(memory.all_projects()) if r.get("session_id")]
+    if not runs:
+        return "transcripts: no recorded session yet"
+    path = transcript.locate(runs[-1]["session_id"])
+    if not path:
+        return "transcripts: the last run's transcript is gone (Claude Code may have cleaned it up)"
+    traces, exact = transcript.jobs(path)
+    tokens = sum(t.input + t.output for trace in traces for t in trace.tracker.usage.values())
+    if not traces or not tokens:
+        return ("⚠️  transcripts: the last session reads as empty. Claude Code's transcript format may have changed, "
+                "so hive statistics will be wrong until hive/transcript.py is updated.")
+    return f"transcripts: ok (last session: {len(traces)} job(s), {tokens:,} tokens" + (f", ${exact:.2f})" if exact else ")")
 
 
 def cmd_install_plugin(argv: list[str]) -> None:
@@ -280,6 +346,8 @@ def main() -> None:
         cmd_run(rest)
     elif first == "chat":
         raise SystemExit("`hive chat` was removed: run `hive` (add -d DIR or a goal), which opens Claude Code with the hive loaded.")
+    elif first == "review":
+        cmd_review(rest)
     elif first in ("waggle", "retro"):
         cmd_waggle(rest, prog=f"hive {first}")
     elif first == "init":

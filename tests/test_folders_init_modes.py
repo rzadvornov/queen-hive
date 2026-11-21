@@ -2,7 +2,6 @@ import asyncio
 import json
 
 import pytest
-from claude_agent_sdk import PermissionResultAllow, PermissionResultDeny
 
 from hive import folders, init
 from hive.modes import Policy
@@ -52,23 +51,9 @@ def test_policy_tools_by_mode(tmp_path):
     ask = Policy("ask", [tmp_path], {"test": "npm test"})
     plan = Policy("plan", [tmp_path])
     assert "Bash" in auto.allowed_tools and auto.permission_mode == "acceptEdits"
-    assert "Edit" not in auto.allowed_tools      # outside-folder edits must reach can_use_tool
+    assert "Edit" not in auto.allowed_tools      # Claude Code asks before edits outside the folders
     assert "Bash" not in ask.allowed_tools and "Bash(npm test)" in ask.allowed_tools
     assert plan.permission_mode == "plan"
-
-
-def test_policy_decisions(tmp_path, monkeypatch):
-    monkeypatch.setattr("hive.ui.interactive", lambda: False)
-    auto = Policy("auto", [tmp_path])
-    inside = asyncio.run(auto.can_use_tool("Write", {"file_path": str(tmp_path / "x")}, None))
-    outside = asyncio.run(auto.can_use_tool("Write", {"file_path": "/etc/hosts"}, None))
-    assert isinstance(inside, PermissionResultAllow)
-    assert isinstance(outside, PermissionResultDeny)
-    ask = Policy("ask", [tmp_path])
-    bash = asyncio.run(ask.can_use_tool("Bash", {"command": "curl x"}, None))
-    assert isinstance(bash, PermissionResultDeny)          # nobody at the keyboard to approve
-    plan = asyncio.run(Policy("plan", [tmp_path]).can_use_tool("ExitPlanMode", {"plan": "p"}, None))
-    assert isinstance(plan, PermissionResultDeny) and plan.interrupt
 
 
 def test_settings_confirm_then_configure(tmp_path, monkeypatch):

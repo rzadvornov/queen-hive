@@ -13,6 +13,9 @@ from hivecore import (  # noqa: F401 - re-exported
     profile_is_blank,
     project_dir,
     protected_paths,
+    read,
+    run_context,
+    tail,
 )
 
 
@@ -33,15 +36,6 @@ def save_state(state: dict) -> None:
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(state, indent=2, ensure_ascii=False))
     tmp.replace(path)
-
-
-def read(pdir: Path, name: str) -> str:
-    path = pdir / name
-    return path.read_text() if path.exists() else ""
-
-
-def tail(pdir: Path, name: str, lines: int = 10) -> str:
-    return "\n".join(read(pdir, name).splitlines()[-lines:])
 
 
 def project_root(pdir: Path) -> Path | None:

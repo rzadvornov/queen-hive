@@ -559,6 +559,33 @@ def test_hive_home_is_private(hive_home):
     assert stat.S_IMODE(hive_home.stat().st_mode) == 0o700
 
 
+def test_bees_cant_change_the_hive_itself(tmp_path):
+    """Retro edits to rules and bees are the Queen's; a bee is denied, on every CLI that names the bee."""
+    from hive import PLUGIN_DIR
+
+    queen_md = str(PLUGIN_DIR / "rules" / "queen.md")
+    patch = f"*** Begin Patch\n*** Update File: {queen_md}\n@@\n-a\n+b\n*** End Patch"
+    for payload in ({"tool_name": "Edit", "agent_type": "haiku-hive:builder", "tool_input": {"file_path": queen_md}},
+                    {"tool_name": "apply_patch", "agent_type": "builder", "tool_input": {"command": patch}},
+                    {"tool_name": "Bash", "agent_type": "builder",
+                     "tool_input": {"command": f"echo x >> {PLUGIN_DIR / 'agents' / 'scout.md'}"}}):
+        out = run_hook("protect.py", {"hook_event_name": "PreToolUse", "cwd": str(tmp_path), **payload},
+                       {"HIVE_PLUGIN_DIR": str(PLUGIN_DIR)})
+        assert "don't change the hive itself" in json.loads(out)["hookSpecificOutput"]["permissionDecisionReason"]
+    queen = run_hook("protect.py", {"hook_event_name": "PreToolUse", "cwd": str(tmp_path), "tool_name": "Edit",
+                                    "tool_input": {"file_path": queen_md}}, {"HIVE_PLUGIN_DIR": str(PLUGIN_DIR)})
+    assert queen == ""                                                   # the Queen applies approved retro items
+    copy = tmp_path / "plugin-copy" / "scripts"                          # a plugin copy still guards the real one
+    copy.mkdir(parents=True)
+    for name in ("protect.py", "hivecore.py"):
+        (copy / name).write_text((PLUGIN_DIR / "scripts" / name).read_text())
+    out = subprocess.run([sys.executable, str(copy / "protect.py")], capture_output=True, text=True,
+                         input=json.dumps({"hook_event_name": "PreToolUse", "cwd": str(tmp_path), "tool_name": "Write",
+                                           "agent_type": "builder", "tool_input": {"file_path": queen_md}}),
+                         env={**os.environ, "HIVE_PLUGIN_DIR": str(PLUGIN_DIR)}).stdout
+    assert "don't change the hive itself" in out
+
+
 def test_models_from_the_codex_account(hive_home, monkeypatch):
     """A ChatGPT plan offers its own models: they join the catalog and become the defaults."""
     from hive import models

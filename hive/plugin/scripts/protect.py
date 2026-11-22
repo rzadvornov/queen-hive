@@ -6,7 +6,8 @@ argument of a writing command (rm, mv, cp destination, tee, touch, truncate, sed
 git rm/mv/checkout/restore). Reading or running protected files is allowed.
 
 Scouts and reviewers are read-only: any file edit by them is denied, and so is a shell
-write outside the temp folders.
+write outside the temp folders. No bee may change the hive itself (its rules, bees, hooks and
+skills): only the Queen does, when she applies a retro item you approved.
 
 The same script guards Codex (apply_patch, Bash) and Gemini CLI sessions (write_file, replace,
 run_shell_command; a BeforeTool event, answered with {"decision": "deny"}). The Gemini CLI doesn't
@@ -14,6 +15,7 @@ say which sub-agent calls a tool, so there the read-only bees rely on their tool
 """
 
 import json
+import os
 import re
 import shlex
 import sys
@@ -30,6 +32,9 @@ SEPARATORS = {";", "&&", "||", "|", "&"}
 ALL_ARGS = {"rm", "mv", "tee", "touch", "truncate", "unlink", "rmdir", "shred", "chmod", "chown"}
 GIT_WRITES = {"rm", "mv", "checkout", "restore"}
 READ_ONLY_BEES = {"scout", "reviewer"}
+# The hive's plugin: this copy, and the one `hive` loaded it from (a copy is used when a bee runs on another model).
+HIVE_ROOTS = {Path(__file__).resolve().parent.parent,
+              *([Path(os.environ["HIVE_PLUGIN_DIR"]).resolve()] if os.environ.get("HIVE_PLUGIN_DIR") else [])}
 SCRATCH = ("/tmp/", "/private/tmp/", "/var/folders/", "/dev/null")
 _REDIRECT = re.compile(r"^(\d*|&)>>?(.*)$")   # >, >>, 2>, &>, and attached forms like >file
 
@@ -143,6 +148,15 @@ def main() -> None:
             for target in write_targets(shell_command(tool_input)):
                 if not str(Path(target).expanduser()).startswith(SCRATCH):
                     deny(f"The Hive: the {bee} bee is read-only and may write only to temp folders, not to {target}.")
+
+    if bee:
+        shell = write_targets(shell_command(tool_input)) if tool in SHELL_TOOLS else []
+        for target in [*edits, *shell]:
+            path = Path(target).expanduser()
+            path = (path if path.is_absolute() else cwd / path).resolve()
+            if any(path == root or root in path.parents for root in HIVE_ROOTS):
+                deny(f"The Hive: bees don't change the hive itself ({path.name}). Report what should change; "
+                     "the Queen applies retro edits the user approves.")
 
     for target in edits:
         check_path(target, cwd)

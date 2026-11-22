@@ -89,7 +89,7 @@ def run(job: Job, headless: bool = False) -> list[dict]:
         session_id=session_id, provider=job.provider)
 
     system = system_prompt(job, pdir, start)
-    env = {**os.environ, "HIVE_RUN_DIR": str(run_dir)}
+    env = {**os.environ, "HIVE_RUN_DIR": str(run_dir), "HIVE_PLUGIN_DIR": str(PLUGIN_DIR)}
     if job.provider == "claude":
         argv = command(job, pdir, system, plugin_for(job.bee_models()), session_id, claude.installed_plugins("haiku-hive"))
         env.update(SUBAGENT_ENV)

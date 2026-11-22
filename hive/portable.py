@@ -55,8 +55,8 @@ def rules_for(provider: str) -> str:
 
 
 def plain(text: str) -> str:
-    """Claude Code plugin names → the names the other CLIs use (`haiku-hive:scout` → `scout`)."""
-    return re.sub(r"`haiku-hive:([a-z-]+)`", r"`\1`", text).replace("${CLAUDE_PLUGIN_ROOT}", str(CORE_DIR))
+    """Claude Code plugin names → the names the other CLIs use (`queen-hive:scout` → `scout`)."""
+    return re.sub(r"`queen-hive:([a-z-]+)`", r"`\1`", text).replace("${CLAUDE_PLUGIN_ROOT}", str(CORE_DIR))
 
 
 def bee(name: str) -> tuple[str, str]:

@@ -3,9 +3,9 @@
   "owner": { "name": "Roman Zadvornov" },
   "plugins": [
     {
-      "name": "haiku-hive",
+      "name": "queen-hive",
       "source": "./core",
-      "description": "The Hive: a Queen model directs cheap worker bees."
+      "description": "Queen Hive: a Queen model directs cheap worker bees."
     }
   ]
 }

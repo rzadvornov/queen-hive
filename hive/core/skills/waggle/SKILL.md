@@ -1,6 +1,6 @@
 ---
 name: waggle
-description: Session retro for The Hive (alias /retro). Lists what went wrong or took extra time in a hive job and proposes minimal edits to the hive rules, agents or project memory. Use when the user asks for a waggle or retro, and after each finished hive job.
+description: Session retro for Queen Hive (alias /retro). Lists what went wrong or took extra time in a hive job and proposes minimal edits to the hive rules, agents or project memory. Use when the user asks for a waggle or retro, and after each finished hive job.
 ---
 Like the waggle dance, share with the hive what this job taught.
 

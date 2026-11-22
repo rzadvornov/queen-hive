@@ -1,4 +1,4 @@
-"""The Hive: a Queen model directs cheap worker bees, in Claude Code, Codex or the Gemini CLI."""
+"""Queen Hive: a Queen model directs cheap worker bees, in Claude Code, Codex or the Gemini CLI."""
 
 import sys
 from pathlib import Path

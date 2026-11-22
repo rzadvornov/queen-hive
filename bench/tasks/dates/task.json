@@ -1,0 +1,3 @@
+{"goal": "Customers billed on the 29th, 30th or 31st get wrong renewal dates: next_billing_date crashes or skips a month at the end of short months. Fix it so a renewal falls on the same day of the next month, or on that month's last day when it is shorter (leap years included), and add regression tests.",
+ "done": "python3 -m unittest discover -s acceptance -t . -v",
+ "kind": "bug fix"}

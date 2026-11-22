@@ -240,7 +240,7 @@ def _waggle_prompt(note: str, provider: str = "claude") -> str:
 def _skill_prompt(skill: str, arguments: str, provider: str) -> str:
     """A slash command in Claude Code; the other CLIs are asked to use the skill."""
     if provider == "claude":
-        return f"/haiku-hive:{skill} {arguments}".strip()
+        return f"/queen-hive:{skill} {arguments}".strip()
     return f"Use the `{skill}` skill" + (f" with: {arguments}" if arguments else ".")
 
 
@@ -394,7 +394,7 @@ def cmd_doctor(argv: list[str]) -> None:
     lines = (out.stdout + out.stderr).strip().splitlines()
     print("plugin validate: " + (lines[-1] if lines else "?"))
     print(f"plugin: {CORE_DIR}")
-    installed = claude.installed_plugins("haiku-hive")
+    installed = claude.installed_plugins(*claude.HIVE_PLUGIN_NAMES)
     if installed:
         print(f"installed in Claude Code too: {', '.join(installed)} (switched off inside `hive` sessions)")
     print(f"hive home: {memory.hive_home()}")
@@ -467,10 +467,10 @@ def cmd_install_plugin(argv: list[str]) -> None:
         raise SystemExit("claude CLI not found on PATH.")
     marketplace = CORE_DIR.parent
     for cmd in ([claude, "plugin", "marketplace", "add", str(marketplace)],
-                [claude, "plugin", "install", "haiku-hive@hive-local"]):
+                [claude, "plugin", "install", "queen-hive@hive-local"]):
         print("$ " + " ".join(cmd), flush=True)
         subprocess.run(cmd, check=False)
-    print("In Claude Code: /haiku-hive:hive <goal>, /haiku-hive:waggle or /haiku-hive:retro")
+    print("In Claude Code: /queen-hive:hive <goal>, /queen-hive:waggle or /queen-hive:retro")
 
 
 def main() -> None:

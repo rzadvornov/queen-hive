@@ -115,9 +115,9 @@ def test_choose_keeps_models_within_the_provider(tmp_path, fake_bin, monkeypatch
 
 def test_rules_for_other_providers():
     claude, gpt, gemini = (portable.rules_for(p) for p in ("claude", "gpt", "gemini"))
-    assert "haiku-hive:scout" in claude and "spawn_agent" not in claude
-    assert "spawn_agent" in gpt and "`agent_type`" in gpt and "haiku-hive" not in gpt and "Haiku" not in gpt
-    assert "invoke_agent" in gemini and "haiku-hive" not in gemini
+    assert "queen-hive:scout" in claude and "spawn_agent" not in claude
+    assert "spawn_agent" in gpt and "`agent_type`" in gpt and "queen-hive" not in gpt and "Haiku" not in gpt
+    assert "invoke_agent" in gemini and "queen-hive" not in gemini
     for rules in (gpt, gemini):
         assert "- S = scout" in rules and "## Brief template" in rules and "hive-summary" in rules
 
@@ -133,7 +133,7 @@ def test_other_queens_get_plain_skill_names(tmp_path):
     from hive.job import queen_prompt
 
     prompt = queen_prompt(job_for(tmp_path, "gemini-3.1-pro", "gemini-3-flash"), memory.ensure_project(tmp_path), None)
-    assert "`init` skill" in prompt and "haiku-hive:" not in prompt   # the profile is still a blank template
+    assert "`init` skill" in prompt and "queen-hive:" not in prompt   # the profile is still a blank template
 
 
 def test_codex_hooks_need_your_approval(hive_home):
@@ -198,7 +198,7 @@ def test_codex_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     hooks = json.loads((root / "hooks.json").read_text())["hooks"]
     assert "protect.py" in hooks["PreToolUse"][0]["hooks"][0]["command"]
     skill = (root / "skills" / "review" / "SKILL.md").read_text()
-    assert "${CLAUDE_PLUGIN_ROOT}" not in skill and "haiku-hive:" not in skill
+    assert "${CLAUDE_PLUGIN_ROOT}" not in skill and "queen-hive:" not in skill
 
 
 def test_gemini_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
@@ -589,7 +589,7 @@ def test_bees_cant_change_the_hive_itself(tmp_path):
 
     queen_md = str(CORE_DIR / "rules" / "queen.md")
     patch = f"*** Begin Patch\n*** Update File: {queen_md}\n@@\n-a\n+b\n*** End Patch"
-    for payload in ({"tool_name": "Edit", "agent_type": "haiku-hive:builder", "tool_input": {"file_path": queen_md}},
+    for payload in ({"tool_name": "Edit", "agent_type": "queen-hive:builder", "tool_input": {"file_path": queen_md}},
                     {"tool_name": "apply_patch", "agent_type": "builder", "tool_input": {"command": patch}},
                     {"tool_name": "Bash", "agent_type": "builder",
                      "tool_input": {"command": f"echo x >> {CORE_DIR / 'agents' / 'scout.md'}"}}):

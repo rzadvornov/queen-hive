@@ -103,17 +103,17 @@ def test_read_only_bees(tmp_path, hive_home):
                              capture_output=True, text=True).stdout
         return "deny" if '"deny"' in out else "pass"
 
-    assert decide("haiku-hive:reviewer", "Edit", {"file_path": str(tmp_path / "a.py")}) == "deny"
-    assert decide("haiku-hive:scout", "Bash", {"command": "echo x > notes.md"}) == "deny"
-    assert decide("haiku-hive:reviewer", "Bash", {"command": "npm test > /tmp/out.txt 2>&1"}) == "pass"   # temp is fine
-    assert decide("haiku-hive:reviewer", "Bash", {"command": "git diff abc123"}) == "pass"
-    assert decide("haiku-hive:builder", "Edit", {"file_path": str(tmp_path / "a.py")}) == "pass"
+    assert decide("queen-hive:reviewer", "Edit", {"file_path": str(tmp_path / "a.py")}) == "deny"
+    assert decide("queen-hive:scout", "Bash", {"command": "echo x > notes.md"}) == "deny"
+    assert decide("queen-hive:reviewer", "Bash", {"command": "npm test > /tmp/out.txt 2>&1"}) == "pass"   # temp is fine
+    assert decide("queen-hive:reviewer", "Bash", {"command": "git diff abc123"}) == "pass"
+    assert decide("queen-hive:builder", "Edit", {"file_path": str(tmp_path / "a.py")}) == "pass"
 
 
 def test_run_context(tmp_path, hive_home):
     context = memory.run_context(tmp_path)
     assert str(memory.project_dir(tmp_path)) in context and "retro-log.md" in context
-    assert "haiku-hive:init" in context                          # blank profile: draft it first
+    assert "queen-hive:init" in context                          # blank profile: draft it first
 
 
 def test_lastrun_facts(tmp_path, hive_home):

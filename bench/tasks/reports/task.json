@@ -1,0 +1,3 @@
+{"goal": "Add a Markdown output format to the sales report (render(report, 'markdown')): a heading, then a table with Region, Units and Revenue columns, regions sorted by revenue descending, and a bold total row. The text and HTML renderers duplicate their sorting and totals; remove that duplication so all three formats share it. Keep the existing output exactly the same and add tests.",
+ "done": "python3 -m unittest discover -s acceptance -t . -v",
+ "kind": "feature + refactor"}

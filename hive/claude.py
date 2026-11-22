@@ -38,11 +38,14 @@ def print_mode(args: list[str], prompt: str, cwd: Path | None = None, env: dict 
         return {"is_error": True, "subtype": "no_result", "result": error[-1] if error else f"exit code {done.returncode}"}
 
 
-def installed_plugins(name: str) -> list[str]:
-    """Enabled installed plugins with this name, e.g. ["haiku-hive@hive-local"]."""
+HIVE_PLUGIN_NAMES = ("queen-hive", "haiku-hive")   # haiku-hive: its name before 0.2, maybe still installed
+
+
+def installed_plugins(*names: str) -> list[str]:
+    """Enabled installed plugins with one of these names, e.g. ["queen-hive@hive-local"]."""
     try:
         done = subprocess.run([binary(), "plugin", "list", "--json"], capture_output=True, text=True, timeout=30)
         plugins = json.loads(done.stdout)
     except (OSError, ValueError, subprocess.TimeoutExpired):
         return []
-    return [p["id"] for p in plugins if isinstance(p, dict) and p.get("enabled") and p.get("id", "").split("@")[0] == name]
+    return [p["id"] for p in plugins if isinstance(p, dict) and p.get("enabled") and p.get("id", "").split("@")[0] in names]

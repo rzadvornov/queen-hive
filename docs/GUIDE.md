@@ -1,4 +1,4 @@
-# The Hive: user guide
+# Queen Hive: user guide
 
 1. [Concepts](#1-concepts)
 2. [Install and sign in](#2-install-and-sign-in)
@@ -129,7 +129,7 @@ The rules, bees, hooks and skills are generated there from the files in `hive/co
 | Read-only reviewers | hook | hook, once approved | instructions only: the CLI doesn't tell hooks which bee runs a tool |
 | Live log | each bee when it starts and reports; commands with ✅/❌ | each bee when it reports (Codex has no hook for starting one); commands without ✅/❌, since Codex's hooks don't report the exit code (the saved report has it) | each bee when it starts and reports; commands with ✅/❌ |
 | Network for commands | yes | in `plan` and `auto` mode (`sandbox_workspace_write.network_access`), so bees can install dependencies; off in `ask` mode and with `--sandbox` | yes |
-| Bee names in the CLI | `haiku-hive:scout` … | "Scout bee" … (Codex allows only ASCII in names) | "🔎 Scout bee" … |
+| Bee names in the CLI | `queen-hive:scout` … | "Scout bee" … (Codex allows only ASCII in names) | "🔎 Scout bee" … |
 | Brief IDs | from the brief | from the task name (`s1_count_lines` → S1): Codex keeps briefs encrypted | from the brief |
 | Profile draft on first use | a Haiku scout reads the project | manifest files only, or the Queen with the `init` skill | manifest files only, or the Queen with the `init` skill |
 | `--budget` cap, `--compare`, local bees | yes | no | no |
@@ -311,21 +311,21 @@ The bees, the Queen's rules, the hooks and the skills (`waggle`, `review`, `init
 
 ```bash
 hive install-plugin
-# runs: claude plugin marketplace add ~/the-hive/hive  &&  claude plugin install haiku-hive@hive-local
+# runs: claude plugin marketplace add ~/queen-hive/hive  &&  claude plugin install queen-hive@hive-local
 ```
 
 Then, in any Claude Code session:
 
 | Command | Effect |
 |---|---|
-| `/haiku-hive:hive <goal>` | The current session becomes the Queen and follows the same rules and memory. The Queen model is your session's model (`/model` to change it). |
-| `/haiku-hive:review [target]` | An independent review of changes by reviewer bees, without building. |
-| `/haiku-hive:init` | Draft or refresh this project's hive profile. |
-| `/haiku-hive:waggle` or `/haiku-hive:retro` | A retro of the current session. `/haiku-hive:hive` runs it by itself when the job finishes, unless you ask it not to ("no waggle"). |
+| `/queen-hive:hive <goal>` | The current session becomes the Queen and follows the same rules and memory. The Queen model is your session's model (`/model` to change it). |
+| `/queen-hive:review [target]` | An independent review of changes by reviewer bees, without building. |
+| `/queen-hive:init` | Draft or refresh this project's hive profile. |
+| `/queen-hive:waggle` or `/queen-hive:retro` | A retro of the current session. `/queen-hive:hive` runs it by itself when the job finishes, unless you ask it not to ("no waggle"). |
 
 Inside Claude Code, permissions follow Claude Code's own settings, so there's no hive mode question. The protection hook is active there too.
 
-To try it without installing: `claude --plugin-dir ~/the-hive/hive/core`. Inside `hive` sessions an installed copy is switched off automatically, so nothing loads twice.
+To try it without installing: `claude --plugin-dir ~/queen-hive/hive/core`. Inside `hive` sessions an installed copy is switched off automatically, so nothing loads twice.
 
 With GPT and Gemini there's nothing to install: `hive` generates the same rules, bees, hooks and skills from this plugin into its Codex and Gemini homes on every run (§2), and the skills are named without the prefix (`waggle`, `review`, `init`).
 

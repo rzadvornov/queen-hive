@@ -62,7 +62,7 @@ def check_path(raw: str, cwd: Path) -> None:
     rule = protecting_rule(path)
     if rule:
         root, pattern = rule
-        deny(f"The Hive: '{pattern}' is a protected path in {root}. It must not be changed "
+        deny(f"Queen Hive: '{pattern}' is a protected path in {root}. It must not be changed "
              "(reading and running it is fine).")
 
 
@@ -143,11 +143,11 @@ def main() -> None:
     bee = (data.get("agent_type") or "").rsplit(":", 1)[-1]
     if bee in READ_ONLY_BEES:
         if edits:
-            deny(f"The Hive: the {bee} bee is read-only. Report what should change instead of changing it.")
+            deny(f"Queen Hive: the {bee} bee is read-only. Report what should change instead of changing it.")
         if tool in SHELL_TOOLS:
             for target in write_targets(shell_command(tool_input)):
                 if not str(Path(target).expanduser()).startswith(SCRATCH):
-                    deny(f"The Hive: the {bee} bee is read-only and may write only to temp folders, not to {target}.")
+                    deny(f"Queen Hive: the {bee} bee is read-only and may write only to temp folders, not to {target}.")
 
     # Unless the hive is the project itself: then its plugin is your code, which bees work on as usual.
     guarded = {root for root in HIVE_ROOTS if not (root == cwd.resolve() or cwd.resolve() in root.parents)}
@@ -157,7 +157,7 @@ def main() -> None:
             path = Path(target).expanduser()
             path = (path if path.is_absolute() else cwd / path).resolve()
             if any(path == root or root in path.parents for root in guarded):
-                deny(f"The Hive: bees don't change the hive itself ({path.name}). Report what should change; "
+                deny(f"Queen Hive: bees don't change the hive itself ({path.name}). Report what should change; "
                      "the Queen applies retro edits the user approves.")
 
     for target in edits:

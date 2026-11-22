@@ -1,10 +1,28 @@
 [project]
-name = "haiku-hive"
+name = "queen-hive"
 version = "0.2.0"
-description = "The Hive: a Queen model plans and verifies, cheap worker bees build, scout and review, in Claude Code, Codex or the Gemini CLI."
+description = "Queen Hive: a Queen model plans and verifies, cheap worker bees build, scout and review, in Claude Code, Codex or the Gemini CLI."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Roman Zadvornov" }]
+keywords = ["claude-code", "codex", "gemini-cli", "ai-agents", "multi-agent", "llm", "code-review", "orchestration"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = [
     "starlette>=0.37",
     "uvicorn>=0.29",
@@ -15,18 +33,27 @@ dependencies = [
 bundled = ["claude-agent-sdk>=0.2.127"]   # brings its own copy of Claude Code, for machines without it
 dev = ["pytest>=8"]
 
+[project.urls]
+Homepage = "https://github.com/rzadvornov/queen-hive"
+Documentation = "https://github.com/rzadvornov/queen-hive/blob/main/docs/GUIDE.md"
+Issues = "https://github.com/rzadvornov/queen-hive/issues"
+
 [project.scripts]
 hive = "hive.cli:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["hive*"]
+exclude = ["*__pycache__*"]
 
 [tool.setuptools.package-data]
 hive = ["core/**/*", "core/.claude-plugin/*", ".claude-plugin/*", "dashboard/static/*"]
+
+[tool.setuptools.exclude-package-data]
+hive = ["**/__pycache__/*", "**/*.pyc", "*.pyc"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -95,7 +95,7 @@ def queen_prompt(job: Job, pdir: Path, start: StartPoint | None) -> str:
                      "Only after the user approves do you start building.")
     parts.append(memory.run_context(target))
     text = "\n".join(p for p in parts if p)
-    return text if job.provider == "claude" else portable.plain(text)   # `haiku-hive:init` → `init`
+    return text if job.provider == "claude" else portable.plain(text)   # `queen-hive:init` → `init`
 
 
 def new_run_dir(pdir: Path) -> Path:

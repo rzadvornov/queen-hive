@@ -1,0 +1,3 @@
+{"goal": "Add an `export` command to the inventory CLI: `python3 -m inventory export --format csv|json [--out FILE]` writes all items (sku, name, quantity, price) sorted by sku, to stdout or to FILE. CSV has a header row; JSON is a list of objects. Reuse the existing store, document the command in the README, and add tests.",
+ "done": "python3 -m unittest discover -s acceptance -t . -v",
+ "kind": "multi-file feature"}

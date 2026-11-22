@@ -1,0 +1,3 @@
+{"goal": "Implement TTLCache in cache/ttl.py to the spec in its docstring (the class is a stub now), and use it in cache/service.py so repeated lookups within the TTL don't call the backend again. Add unit tests.",
+ "done": "python3 -m unittest discover -s acceptance -t . -v",
+ "kind": "implement from spec"}

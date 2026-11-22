@@ -190,7 +190,7 @@ def run_context(root: str | Path) -> str:
     return "\n".join([
         f"- Hive memory folder for this project: {pdir} ({', '.join(TEMPLATES)}). Write memory only there.",
         f"- Protected paths: {', '.join(protected)}" if protected else "- Protected paths: none listed",
-        "- The profile is still an empty template: draft it first with the `haiku-hive:init` skill."
+        "- The profile is still an empty template: draft it first with the `queen-hive:init` skill."
         if profile_is_blank(pdir) else "",
         "\n# Project profile\n" + read(pdir, "profile.md"),
         "\n# Known issues\n" + read(pdir, "known-issues.md"),

@@ -1,4 +1,4 @@
-// The Hive dashboard: plain JS, no build step, no external libraries (so exports work offline).
+// Queen Hive dashboard: plain JS, no build step, no external libraries (so exports work offline).
 "use strict";
 
 const app = document.getElementById("app");

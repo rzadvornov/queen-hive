@@ -36,10 +36,10 @@ def test_stages_scaled_to_exact_model_totals():
 
 
 def test_stage_of():
-    assert stage_of("haiku-hive:reviewer", "R-arch") == "review"
-    assert stage_of("haiku-hive:builder", "F1") == "fix"
-    assert stage_of("haiku-hive:scout", "S1") == "scout"
-    assert stage_of("haiku-hive:builder", "B2") == "build"
+    assert stage_of("queen-hive:reviewer", "R-arch") == "review"
+    assert stage_of("queen-hive:builder", "F1") == "fix"
+    assert stage_of("queen-hive:scout", "S1") == "scout"
+    assert stage_of("queen-hive:builder", "B2") == "build"
 
 
 def test_returns_count_repeated_build_and_fix_briefs():
@@ -48,7 +48,7 @@ def test_returns_count_repeated_build_and_fix_briefs():
 
 
 def test_headless_event_lines():
-    assert format_event({"kind": "dispatch", "stage": "build", "agent": "haiku-hive:builder", "description": "B1 combo"}) \
+    assert format_event({"kind": "dispatch", "stage": "build", "agent": "queen-hive:builder", "description": "B1 combo"}) \
         == "👑 → 🔨 builder   B1 combo"
     assert format_event({"kind": "check", "command": "npm test", "ok": False, "output": "x\n1 failed"}) == "👑 🔍 $ npm test\n   ❌ 1 failed"
     assert format_event({"kind": "report", "label": "B1", "ok": True, "text": "Changed: a.js\nResult: passed"}) == "   🐝 B1 📨 Changed: a.js"

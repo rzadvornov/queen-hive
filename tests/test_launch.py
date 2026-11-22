@@ -38,7 +38,7 @@ def write_session(config, session_id="sess-1"):
     folder = config / "projects" / "-tmp-shop"
     folder.mkdir(parents=True)
     agent = lambda tid, desc, kind: {"type": "tool_use", "id": tid, "name": "Agent",
-                                     "input": {"description": desc, "subagent_type": f"haiku-hive:{kind}", "prompt": "Goal: x"}}
+                                     "input": {"description": desc, "subagent_type": f"queen-hive:{kind}", "prompt": "Goal: x"}}
     result = lambda tid, text="done", error=False: [{"type": "tool_result", "tool_use_id": tid, "content": text, "is_error": error}]
     entries = [
         user(0, "add a combo discount"),
@@ -53,7 +53,7 @@ def write_session(config, session_id="sess-1"):
         assistant(11, "m4", OPUS, agent("t2", "R-goal review docs", "reviewer")),
         user(12, result("t2")),
         assistant(13, "m5", OPUS, summary(done_when=["true"])),
-        user(14, "<command-name>/haiku-hive:waggle</command-name>"),
+        user(14, "<command-name>/queen-hive:waggle</command-name>"),
         assistant(15, "m6", OPUS, {"type": "text", "text": "Retro: 1) tighten B1's brief."}),
         {"type": "cost-state", "totalCostUSD": 0.5},
     ]
@@ -62,7 +62,7 @@ def write_session(config, session_id="sess-1"):
     bees = folder / session_id / "subagents"
     bees.mkdir(parents=True)
     for aid, tid, kind, desc in (("a1", "t1", "builder", "B1 combo logic"), ("a2", "t2", "reviewer", "R-goal review docs")):
-        (bees / f"agent-{aid}.meta.json").write_text(json.dumps({"toolUseId": tid, "agentType": f"haiku-hive:{kind}", "description": desc}))
+        (bees / f"agent-{aid}.meta.json").write_text(json.dumps({"toolUseId": tid, "agentType": f"queen-hive:{kind}", "description": desc}))
         bee = assistant(2, f"h-{aid}", HAIKU, {"type": "text", "text": "Changed: x"}, tokens=50)
         (bees / f"agent-{aid}.jsonl").write_text(json.dumps(bee) + "\n" + json.dumps(bee) + "\n")
     return path
@@ -151,17 +151,17 @@ def test_claude_command(tmp_path, monkeypatch):
     assert auto[auto.index("--add-dir") + 1: auto.index("--add-dir") + 3] == [str(other), str(pdir)]
     assert "Bash" in auto and auto[-2:] == ["--", "--fix the tests"]      # a goal is never read as a flag
     system = value("--append-system-prompt")
-    assert "Queen" in system and str(CORE_DIR) in system and "haiku-hive:waggle" in system
+    assert "Queen" in system and str(CORE_DIR) in system and "queen-hive:waggle" in system
 
     assert value("--permission-mode", argv("plan")) == "plan" and "--settings" not in auto
     job = Job(goal="", folders=[tmp_path], queen=models.get("opus-5.5"), workers=models.get("haiku-5.5"), mode="auto")
-    installed = launch.command(job, pdir, "", CORE_DIR, "s", ["haiku-hive@hive-local"])
-    assert json.loads(value("--settings", installed)) == {"enabledPlugins": {"haiku-hive@hive-local": False}}
+    installed = launch.command(job, pdir, "", CORE_DIR, "s", ["queen-hive@hive-local"])
+    assert json.loads(value("--settings", installed)) == {"enabledPlugins": {"queen-hive@hive-local": False}}
     boxed = launch.command(dataclasses.replace(job, sandbox=True), pdir, "", CORE_DIR, "s")
     assert json.loads(value("--settings", boxed)) == {"sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True}}
     ask = argv("ask", waggle=False)
     assert "Bash" not in ask and "--" not in ask                          # risky commands ask; no goal, no prompt
-    assert "haiku-hive:waggle" not in value("--append-system-prompt", ask)
+    assert "queen-hive:waggle" not in value("--append-system-prompt", ask)
 
 
 def test_cli_routes_terminal_to_claude_and_scripts_to_headless(tmp_path, monkeypatch, capsys):
@@ -205,7 +205,7 @@ def test_events_hook(tmp_path):
     bee = tmp_path / "subagents" / "agent-a1.jsonl"
     bee.parent.mkdir()
     bee.write_text(json.dumps(assistant(1, "h1", HAIKU, {"type": "text", "text": "Changed: x\nResult: done"})) + "\n")
-    bee.with_name("agent-a1.meta.json").write_text(json.dumps({"toolUseId": "t1", "agentType": "haiku-hive:builder", "description": "B1 combo"}))
+    bee.with_name("agent-a1.meta.json").write_text(json.dumps({"toolUseId": "t1", "agentType": "queen-hive:builder", "description": "B1 combo"}))
 
     def fire(payload, env_run_dir=run_dir):
         env = {**os.environ, "HIVE_RUN_DIR": str(env_run_dir)} if env_run_dir else {k: v for k, v in os.environ.items() if k != "HIVE_RUN_DIR"}
@@ -213,7 +213,7 @@ def test_events_hook(tmp_path):
         assert done.returncode == 0 and not done.stdout
 
     fire({"hook_event_name": "PreToolUse", "tool_name": "Agent", "tool_use_id": "t1",
-          "tool_input": {"description": "B1 combo", "subagent_type": "haiku-hive:builder", "prompt": "Goal: x"}})
+          "tool_input": {"description": "B1 combo", "subagent_type": "queen-hive:builder", "prompt": "Goal: x"}})
     fire({"hook_event_name": "PostToolUse", "tool_name": "Bash", "tool_input": {"command": "npm test"},
           "tool_response": {"stdout": "ok", "stderr": ""}})
     fire({"hook_event_name": "PostToolUseFailure", "tool_name": "Bash", "tool_input": {"command": "npm run lint"}, "error": "1 problem"})
@@ -243,15 +243,15 @@ def test_review_and_waggle_open_claude_on_their_skills(tmp_path, monkeypatch):
     cli.cmd_review(["feature/combo", *base])
     cli.cmd_review(base)
     cli.cmd_waggle(base, prog="hive waggle")
-    assert goals == [("/haiku-hive:review feature/combo", False), ("/haiku-hive:review", False),
-                     ("/haiku-hive:waggle Review the last recorded hive run in this project.", False)]
+    assert goals == [("/queen-hive:review feature/combo", False), ("/queen-hive:review", False),
+                     ("/queen-hive:waggle Review the last recorded hive run in this project.", False)]
 
 
 def test_headless_follow_prints_complete_lines(tmp_path, capsys):
     import threading
 
     log = tmp_path / "events.jsonl"
-    done = {"kind": "dispatch", "stage": "scout", "agent": "haiku-hive:scout", "description": "S1 look — ünïcode"}
+    done = {"kind": "dispatch", "stage": "scout", "agent": "queen-hive:scout", "description": "S1 look — ünïcode"}
     log.write_text(json.dumps(done, ensure_ascii=False) + "\n" + '{"kind": "queen_text", "text": "half a li')
     stop = threading.Event()
     stop.set()

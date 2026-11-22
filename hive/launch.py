@@ -39,7 +39,7 @@ unless the user asked to skip the retro."""
 def system_prompt(job: Job, pdir: Path, start) -> str:
     text = queen_prompt(job, pdir, start) + SESSION_NOTE.format(product=providers.PROVIDERS[job.provider].product,
                                                                  plugin=CORE_DIR)
-    skill = "haiku-hive:waggle" if job.provider == "claude" else "waggle"
+    skill = "queen-hive:waggle" if job.provider == "claude" else "waggle"
     return text + WAGGLE_NOTE.format(skill=skill) if job.waggle else text
 
 
@@ -91,7 +91,7 @@ def run(job: Job, headless: bool = False) -> list[dict]:
     system = system_prompt(job, pdir, start)
     env = {**os.environ, "HIVE_RUN_DIR": str(run_dir), "HIVE_CORE_DIR": str(CORE_DIR)}
     if job.provider == "claude":
-        argv = command(job, pdir, system, plugin_for(job.bee_models()), session_id, claude.installed_plugins("haiku-hive"))
+        argv = command(job, pdir, system, plugin_for(job.bee_models()), session_id, claude.installed_plugins(*claude.HIVE_PLUGIN_NAMES))
         env.update(SUBAGENT_ENV)
         if headless:
             argv[1:1] = ["-p", "--output-format", "json", "--permission-prompts", "none",

@@ -12,7 +12,7 @@ from hive.folders import StartPoint
 from hive.render import JobStats
 
 REVIEW_LEVELS = {
-    "full": "Run the full independent review with the default lenses for this task type.",
+    "full": "Run the full independent review with the default lenses for this task type, sized to the change.",
     "light": "Run a light independent review: only the `goal` and `tests` lenses (for non-coding tasks: `goal` only).",
     "off": "Skip the independent review this time. Still verify every brief yourself.",
 }

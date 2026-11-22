@@ -54,9 +54,13 @@ For research briefs: `Done when: the answer covers X, with file:line or URL for 
 
 ## Independent review
 Launch `queen-hive:reviewer` bees **in parallel, in one message**. Each reviewer covers one group of lenses and
-checks each lens separately. For a full review use 3 reviewers (`R-goal+tests`, `R-correctness+security`,
-`R-arch+perf+rules`), or 2 for a small change of a few files (`R-goal+tests+rules`, `R-correctness+security+arch+perf`);
-for a light review one. A reviewer's brief is exactly 4 lines, the same for each reviewer except the lenses:
+checks each lens separately. Size a full review by the change (`git diff --stat` from the start commit):
+- **Small** (up to about 3 files and 100 changed lines): 1 reviewer, `R-goal+correctness+tests`; add `security` to it
+  when the change handles user input, files, authentication or money.
+- **Medium:** 2 reviewers, `R-goal+tests+rules` and `R-correctness+security+arch+perf`.
+- **Large or risky** (many files or modules, security-sensitive, a migration): 3 reviewers, `R-goal+tests`,
+  `R-correctness+security` and `R-arch+perf+rules`.
+A light review is always 1 reviewer, `R-goal+tests`. A reviewer's brief is exactly 4 lines, the same for each reviewer except the lenses:
 ```
 Goal: <the user's goal, one sentence>
 Change set: git diff <start commit> plus untracked files (git status --short)

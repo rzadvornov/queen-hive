@@ -99,7 +99,11 @@ def run(job: Job, headless: bool = False) -> list[dict]:
         env.update(SUBAGENT_ENV)
         if headless:
             env.setdefault("CLAUDE_CODE_PROMPT_CACHE_TTL", HEADLESS_CACHE_TTL)
+            # Like a model alone in --compare: without your personal setup (its skills, MCP servers and plugins add
+            # thousands of tokens the Queen would re-read every turn). The hive's own bees, hooks and skills load
+            # through --plugin-dir.
             argv[1:1] = ["-p", "--output-format", "json", "--permission-prompts", "none",
+                         "--setting-sources", "project,local", "--strict-mcp-config",
                          *(["--max-budget-usd", f"{job.budget:g}"] if job.budget else [])]
     else:
         argv, extra = providers.runtime(job.provider).command(job, pdir, system, session_id, headless)

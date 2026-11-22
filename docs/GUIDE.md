@@ -190,6 +190,8 @@ review: lenses goal, correctness, tests, arch, perf, rules, security · confirme
 🐝 Hive $1.00 vs Claude Opus 5.5 alone $3.05 (estimate, same tokens) → saved 67%
 ```
 
+Read "saved" with care: an ≈ estimate reprices the hive's own tokens at another model's price, but a model working alone uses far fewer tokens. Measured side by side (`--compare`), single models did the [benchmark tasks](../README.md#benchmarks) for less (§8).
+
 **Scripts and CI.** Without a terminal, or with `--headless`, the hive doesn't open the CLI's interface. It runs the goal in the CLI's print mode, prints the Queen's progress, stops at the end and prints the same report. A goal is required, there's no waggle, and with Claude `--budget` is a hard cap. A headless run's `--queen`, `--workers` and `--mode` apply to that run only: only interactive runs change the defaults `hive` offers you.
 
 The hive never commits. Review the changes with `git diff` and commit them yourself.
@@ -239,9 +241,9 @@ The exit code is 0 when the last job finished and acceptance passed (or there wa
 
 | Queen | Use it for |
 |---|---|
+| **Opus 5.5** (default) | Most real work: features, refactors, tricky bugs, and large or vague work where planning and triage matter. |
+| **Sonnet 5.5** | Everyday and well-defined work. In the benchmarks a Sonnet Queen with `--review light` got the same results as the defaults for about a fifth of the cost. Half Opus's price per token. |
 | **Fable 5.1** | The hardest, longest or vaguest work. It costs 2.5× Opus 5.5 per token. |
-| **Opus 5.5** (default) | Most real work: features, refactors, tricky bugs. |
-| **Sonnet 5.5** | Small, well-defined tasks where planning is easy. Half the price of Opus 5.5. |
 | **Opus 4.8 / Opus 5** | Comparisons, or if you prefer their style. |
 
 With GPT and Gemini the same idea holds: a strong Queen (GPT-5.5, or your ChatGPT plan's balanced model such as GPT-5.6-Terra; Gemini 3.1 Pro) for real work, and a faster one (Gemini 3.8 Flash) for small, clear tasks. `hive models --check` shows which ones your login can use.
@@ -280,7 +282,7 @@ In every mode, edits outside the granted folders are refused (`ask` asks you ins
 - **⚖️ Model alone (`--compare`):** real runs. The folder is copied before the hive starts, as copy-on-write clones where the file system supports them (APFS, Btrfs, XFS), so even large folders copy in about a second. Links leading out of the copy are removed. Each model does the whole job alone, without subagents, with the same goal, budget, protected paths and acceptance commands. You get real tokens, cost, time and ✅/❌. The diffs are kept in the run folder (`compare-<model>.diff`) and the copies are deleted.
 - **saved X%:** the hive against the Queen model alone, using the measured run if there is one, otherwise the estimate.
 
-Be honest with yourself about the numbers. On tiny tasks the hive's overhead (planning, verification, review) can cost **more** than one model alone. One real example: adding a `power()` function cost $0.19 with the hive and $0.10 with Sonnet alone. The hive pays off on real features, where its parallel cheap bees and independent review replace expensive single-model work.
+Be honest with yourself about the numbers. In both [benchmarks](../README.md#benchmarks), nine tasks from small features to realistic issues scored on hidden tests, every single Claude model solved every task too, for 3–15× less than the full hive. The hive's checks and review didn't change a result there; their value is the guards, the review on record and the history, and larger work hasn't been benchmarked yet. Use the defaults (Opus Queen, full review) when a missed defect would be expensive, `--queen sonnet-5.5 --review light` for everyday work, and a single model for quick changes.
 
 All of this is saved in `~/.hive/projects/<p>/runs/<id>/run.json`, with an event log alongside it. `hive stats` summarizes it.
 

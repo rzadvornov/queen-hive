@@ -1,0 +1,3 @@
+{"issue": "Our Berlin shop reports that monthly revenue totals are sometimes off: around the start or end of a month, a day's revenue shows up in the wrong month. It seems to happen mostly in summer. Please find the cause and fix it.",
+ "test": "python3 -m unittest discover -s tests -t .",
+ "kind": "vague bug report"}

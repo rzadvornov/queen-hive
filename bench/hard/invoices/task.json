@@ -1,0 +1,5 @@
+{
+ "issue": "Our EU customers need their invoices in EUR, and a partner in Japan wants JPY. Add a currency to invoices, set when one is created: `Invoice(..., currency=\"EUR\")`. USD stays the default, so today's invoices don't change. Catalog prices stay in USD cents; convert each line with the rates in rates.json. Customers complain when the numbers on an invoice don't add up, so the total must always equal the sum of what's printed. Show amounts with the currency's symbol. Invoices we already saved must still load.",
+ "test": "python3 -m unittest discover -s tests -t .",
+ "kind": "cross-module feature"
+}

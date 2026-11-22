@@ -1,31 +1,36 @@
 # 🐝 Queen Hive
 
-**An expensive model plans and checks. Cheap models do the work. You see what it cost.**
+**Guardrails, an independent review and cost tracking for AI coding agents, in Claude Code, Codex or the Gemini CLI.**
 
-A Queen model (Claude Opus, GPT-5.x, Gemini Pro …) breaks your goal into small briefs, sends cheap **worker bees** (Haiku, GPT-6 Luna, Gemini Flash-Lite) to build, scout and review, re-runs every check herself, and runs an **independent review** before she calls it done. It runs inside the CLI you already use: **Claude Code**, **OpenAI's Codex CLI** or the **Gemini CLI**. Every job ends with a report of what it cost against one model doing it alone.
+A Queen model breaks your goal into small briefs and sends cheap **worker bees** to build, scout and review. She re-runs every check herself, an independent review runs before anything is called done, hooks enforce what agents may not touch, and every job leaves a record of what was done, how it was verified and what it cost.
+
+It doesn't make an agent smarter or cheaper on its own: in [our benchmarks](#benchmarks) a single Claude model solved the same tasks for less. What it adds is a process you can check.
 
 ![A Queen Hive run: the Queen sends a builder and seven reviewers, checks their work and reports the cost](https://raw.githubusercontent.com/rzadvornov/queen-hive/main/docs/media/demo.gif)
 
-<sub>The output of a real run from the [benchmark](#benchmark), replayed faster (the run took 2 minutes).</sub>
+<sub>The output of a real run from the [first benchmark](#benchmarks) (the defaults: Opus 5.5 Queen, full review), replayed faster (the run took 2 minutes).</sub>
 
 ```bash
 pipx install queen-hive
 hive "Fix the failing tests in ~/projects/api"
 ```
 
-## Why not just use sub-agents?
+## What it adds to a plain agent
 
-Claude Code, Codex and the Gemini CLI can all spawn sub-agents. Queen Hive is the discipline around them:
-
-- **Don't trust reports.** Every brief comes with a runnable *Done when* check, and the Queen re-runs it herself. A failing brief goes back with the error, at most 3 times, then she asks you.
-- **An independent review** from separate lenses (correctness, tests, architecture, security …) by reviewer bees that never see the builders' reports.
+- **Checks that aren't on trust.** Every brief comes with a runnable *Done when*, and the Queen re-runs it herself; a failing brief goes back with the error, at most 3 times, then she asks you.
+- **An independent review on record:** reviewer bees that never see the builders' reports check the work from separate lenses (goal, correctness, tests, architecture, security …), and the Queen triages every finding.
 - **Guards that are enforced, not requested:** hooks block edits to protected paths (your acceptance tests), keep scouts and reviewers read-only, and stop bees from changing the hive's own rules.
-- **Cost you can see:** tokens and cost per stage, against single models, estimated or measured side by side (`--compare`). A live dashboard and run history.
+- **Cost and history you can see:** tokens and cost per stage, against single models (estimated, or measured side by side with `--compare`), a live dashboard and a run history.
+- **One workflow on three providers:** the same rules, bees, guards and reports in Claude Code, Codex and the Gemini CLI.
 - **Memory outside your repo** and a **retro** after each job that proposes rule fixes, applied only when you approve them.
 
-## Benchmark
+**When to use it:** work where a missed defect costs more than the tokens, where you want a record of how a change was checked, or where agents must not touch certain files. **When not to:** quick, self-contained changes. A single model does those faster and cheaper.
 
-Five small, well-specified Python tasks (bug fix, feature, multi-file feature, refactor, implement-from-spec), each with a product owner's acceptance test the hive may not edit. The hive ran with full review; each model alone ran in a copy of the same repo ([bench/](bench/), `python3 bench/run.py`).
+## Benchmarks
+
+Two benchmarks so far, both on Claude, both published as they came out ([bench/](bench/)).
+
+**1. Five small tasks** (bug fix, feature, multi-file feature, refactor, implement-from-spec), each with a product owner's acceptance test the hive may not edit. Full hive: Opus 5.5 Queen, Haiku 5.5 bees, full review.
 
 | Task | Hive (Opus 5.5 + Haiku 5.5 bees) | Claude Sonnet 5.5 alone | Claude Opus 5.5 alone |
 |---|---|---|---|
@@ -36,7 +41,19 @@ Five small, well-specified Python tasks (bug fix, feature, multi-file feature, r
 | ttlcache (implement from spec) | ✅ $1.10 · 5.3m | ✅ $0.12 · 0.3m | ✅ $0.43 · 1.4m |
 | **Total** | **5/5 passed · $4.45** | **5/5 passed · $0.41** | **5/5 passed · $1.54** |
 
-**Honest reading:** on tasks this small every variant passes, and the hive costs about 3× Opus alone and 11× Sonnet alone. Almost all of it is the Queen's planning, verification and review triage (Haiku bees cost cents); the review did confirm and fix 8 real issues across the five tasks that the acceptance tests didn't require. The hive is built for larger, vaguer work where single models miss things; a benchmark of such tasks is still to come. For small jobs use `--review light` and `--queen sonnet-5.5`, or a single model.
+**2. Four realistic issues, scored on hidden tests** ([design](bench/HARDER.md)): a vague "totals are off in summer" bug (daylight saving), an upload path-traversal fix (symlinks, absolute paths, names like `..hidden` that must keep working), a 5× speed-up with byte-identical output, and multi-currency invoices (rounding, JPY). Agents saw only the issue and the visible tests; hidden tests and regression tests were run afterwards.
+
+Each cell: hidden tests passed · regressions · cost · time.
+
+| Task | hive | Claude Sonnet 5.5 alone | Claude Opus 5.5 alone | hive light |
+|---|---|---|---|---|
+| invoices | 100% · 0 · $1.39 · 6.5m | 100% · 0 · $0.10 · 0.5m | 100% · 0 · $0.68 · 3.1m | 100% · 0 · $0.30 · 3.1m |
+| ledger | 100% · 0 · $1.08 · 4.5m | 100% · 0 · $0.07 · 0.2m | 100% · 0 · $0.23 · 0.9m | 100% · 0 · $0.17 · 1.0m |
+| report | 100% · 0 · $0.76 · 3.8m | 100% · 0 · $0.06 · 2.1m | 100% · 0 · $0.38 · 3.8m | 100% · 0 · $0.24 · 6.0m |
+| uploads | 100% · 0 · $1.21 · 4.9m | 100% · 0 · $0.07 · 0.3m | 100% · 0 · $0.19 · 0.7m | 100% · 0 · $0.21 · 1.9m |
+| **Total** | **4/4 correct · $4.43** · $1.11 per correct task | **4/4 correct · $0.30** · $0.08 per correct task | **4/4 correct · $1.47** · $0.37 per correct task | **4/4 correct · $0.92** · $0.23 per correct task |
+
+**What this shows:** every variant solved every task, so on self-contained work of this size the hive's checks and review change nothing in the result. They cost 3–15× more. The defaults stay the thorough setup (Opus 5.5 Queen, full review). For everyday work, the cheapest setup that keeps the hive's guards and review is `--queen sonnet-5.5 --review light`: $0.23 per task above, with the same results. Larger, longer tasks may tell a different story; that benchmark hasn't been run.
 
 ## Install
 
@@ -187,7 +204,7 @@ Your own `~/.codex` and `~/.gemini` are never edited. GPT and Gemini prices come
 - **👑 and 🐝 in the chat:** on every provider the Queen starts her messages with 👑 and names bees with their icon (🔎 scout, 🔨 builder, 🧐 reviewer), and bees start their reports with `🐝 <brief ID>`. The Gemini CLI shows bees as "🔎 Scout bee" and so on; Codex as "Scout bee" (it allows no emoji in names).
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
 - **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
-- **Independent review:** reviewer bees check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security). They don't see the builders' reports. `hive review` runs the same review on any diff, branch or PR.
+- **Independent review:** reviewer bees check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security), or only goal and tests with `--review light`. They don't see the builders' reports. `hive review` runs the same review on any diff, branch or PR.
 - **Protected paths:** for example your acceptance tests. A hook blocks file edits to them, and shell writes as far as a parse of the command can tell.
 - **Memory outside your project:** kept in `~/.hive/projects/…`. After each job, a retro (`waggle`) proposes rule fixes and applies only those you approve. Skip it with `--no-waggle`.
 - **Statistics:** tokens and cost per stage. Each job is compared with single models, either estimated or, with `--compare` (Claude only for now), as real side-by-side runs.

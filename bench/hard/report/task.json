@@ -1,0 +1,3 @@
+{"issue": "The customer revenue report (python3 -m sales report orders.csv) takes minutes on our full export (about 200k orders). Make it fast: it should run in a couple of seconds. Finance diffs the output against last month's, so the output must stay exactly the same.",
+ "test": "python3 -m unittest discover -s tests -t .",
+ "kind": "performance, identical output"}

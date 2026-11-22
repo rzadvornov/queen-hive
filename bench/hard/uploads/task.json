@@ -1,0 +1,3 @@
+{"issue": "A security researcher reports that uploads can be written outside the storage folder. Please fix it. Users must still be able to upload into sub-folders.",
+ "test": "python3 -m unittest discover -s tests -t .",
+ "kind": "security fix"}

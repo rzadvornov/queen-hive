@@ -106,7 +106,8 @@ def format_event(event: dict) -> str | None:
         return f"👑 → {STAGE_ICONS.get(stage, '🐝')} {event.get('agent', '?').rsplit(':', 1)[-1]:9} {event.get('description', '')}"
     if kind == "check":
         tail = (event.get("output") or "").strip().splitlines()[-1:] or [""]
-        return f"👑 🔍 $ {_short(event.get('command', ''), 160)}\n   {'✅' if event.get('ok') else '❌'} {_short(tail[0], 160)}"
+        mark = {True: "✅", False: "❌"}.get(event.get("ok"), "·")   # None: the CLI didn't say
+        return f"👑 🔍 $ {_short(event.get('command', ''), 160)}\n   {mark} {_short(tail[0], 160)}"
     if kind == "report":
         clean = _TAG_RE.sub("", event.get("text") or "")
         first = next((line for line in clean.splitlines() if line.strip() and not line.startswith("agentId")), "")

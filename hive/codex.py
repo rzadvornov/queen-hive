@@ -12,6 +12,7 @@ import re
 import shlex
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 from hive import PLUGIN_DIR, memory, portable, providers
@@ -91,6 +92,12 @@ def prepare(bees: dict) -> Path:
     return root
 
 
+def network(job) -> bool:
+    """Codex's sandbox has no network unless asked: plan and auto mode get it, as in the other CLIs, so bees can
+    install dependencies; ask mode and --sandbox keep it off."""
+    return job.mode in ("plan", "auto") and not job.sandbox
+
+
 def command(job, pdir: Path, system: str, session_id: str, headless: bool) -> tuple[list[str], dict]:
     """The `codex` command line and its environment. Codex picks its own session id."""
     prepare(job.bee_models())
@@ -105,6 +112,7 @@ def command(job, pdir: Path, system: str, session_id: str, headless: bool) -> tu
              "-c", f"developer_instructions={_toml(system)}",
              "-c", 'sandbox_mode="workspace-write"',
              "-c", f"approval_policy={_toml(approval)}",
+             "-c", f"sandbox_workspace_write.network_access={_toml(network(job))}",
              "-c", "agents.max_threads=5",
              "-c", "agents.max_depth=1"]
     if job.queen.queen_effort:
@@ -207,8 +215,14 @@ def _ts(entry: dict) -> float | None:
 
 
 def rollouts(since: float) -> list[Path]:
-    base = home() / "sessions"
-    return sorted(p for p in base.glob("**/rollout-*.jsonl") if p.stat().st_mtime >= since - 60) if base.exists() else []
+    """Rollouts written since a time. Codex files them by local date (sessions/YYYY/MM/DD), so only the date
+    folders from the day before `since` on are read, not every session ever."""
+    first = time.strftime("%Y/%m/%d", time.localtime(since - 86400))
+    found = []
+    for folder in (home() / "sessions").glob("*/*/*"):
+        if folder.relative_to(home() / "sessions").as_posix() >= first:
+            found += [p for p in folder.glob("rollout-*.jsonl") if p.stat().st_mtime >= since - 60]
+    return sorted(found)
 
 
 def locate(started: float, cwd: Path) -> Path | None:

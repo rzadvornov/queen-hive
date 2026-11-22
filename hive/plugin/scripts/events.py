@@ -154,7 +154,8 @@ def handle(run_dir: Path, data: dict) -> None:
         response = data.get("tool_response")
         output = (f"{response.get('stdout', '')}\n{response.get('stderr', '')}" if isinstance(response, dict)
                   else str(response or data.get("error") or ""))
-        emit(run_dir, "check", command=command, ok=event == "PostToolUse", output=output.strip()[-2000:])
+        ok = None if "turn_id" in data else event == "PostToolUse"   # Codex sends no exit code: unknown, not passed
+        emit(run_dir, "check", command=command, ok=ok, output=output.strip()[-2000:])
     elif event == "SubagentStop":
         meta, path = bee_meta(data)
         description = meta.get("description") or data.get("description", "")

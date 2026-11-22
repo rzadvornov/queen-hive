@@ -56,7 +56,7 @@ def session_home(session_id: str) -> Path:
     return home() / "sessions" / session_id
 
 
-def _prune(keep_days: float = 2) -> None:
+def _prune(keep_days: float = 14) -> None:   # long enough not to hit a session still open
     cutoff = time.time() - keep_days * 86400
     for old in (home() / "sessions").glob("*") if (home() / "sessions").exists() else []:
         if old.is_dir() and old.stat().st_mtime < cutoff:

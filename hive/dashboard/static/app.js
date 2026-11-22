@@ -63,7 +63,7 @@ function reconstruct(events) {
         break;
       }
       case "bee_done": { const b = run.briefs.get(e.id); if (b && e.status !== "completed") b.status = e.status; break; }
-      case "check": run.checks.push(e); run.timeline.push({ ts: e.ts, text: `👑 🔍 <code>${esc(e.command.slice(0, 120))}</code> ${e.ok ? "✅" : "❌"}` }); break;
+      case "check": run.checks.push(e); run.timeline.push({ ts: e.ts, text: `👑 🔍 <code>${esc(e.command.slice(0, 120))}</code> ${e.ok == null ? "" : e.ok ? "✅" : "❌"}` }); break;
       case "queen_text": run.queen.push(e.text); break;
       case "turn_end": run.cost = e.cost_usd; break;
       case "acceptance": run.acceptance.push(e); break;
@@ -152,7 +152,7 @@ function renderRun(data, { live = false } = {}) {
       <div class="tile"><div class="k">Queen</div><div class="v" style="font-size:16px">${esc(record?.queen.name || start.queen)}</div></div>
       <div class="tile"><div class="k">Cost</div><div class="v">${usd(cost)}</div></div>
       <div class="tile"><div class="k">Briefs</div><div class="v">${run.order.length}</div></div>
-      <div class="tile"><div class="k">Checks</div><div class="v">${run.checks.filter((c) => c.ok).length}/${run.checks.length}</div></div>
+      <div class="tile"><div class="k">Checks</div><div class="v">${run.checks.filter((c) => c.ok).length}/${run.checks.filter((c) => c.ok != null).length}</div></div>
     </div>
     ${runTree(run)}
     ${record ? statsSection(record) : ""}

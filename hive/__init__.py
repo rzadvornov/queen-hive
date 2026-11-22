@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 PLUGIN_DIR = Path(__file__).parent / "plugin"
 SCRIPTS_DIR = PLUGIN_DIR / "scripts"

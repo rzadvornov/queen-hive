@@ -433,6 +433,43 @@ def test_codex_session_is_not_an_earlier_one(hive_home, tmp_path):
     assert codex.locate(started, tmp_path).name == "rollout-new.jsonl"
 
 
+def test_codex_network_follows_the_mode(tmp_path, fake_bin):
+    from hive import codex
+
+    fake_bin("codex", "")
+    pdir = memory.ensure_project(tmp_path)
+    for mode, sandbox, expected in (("auto", False, "true"), ("plan", False, "true"), ("ask", False, "false"),
+                                    ("auto", True, "false")):
+        job = job_for(tmp_path, "gpt-5.5", "gpt-6-luna", sandbox=sandbox)
+        job.mode = mode
+        argv, _ = codex.command(job, pdir, "", "id", headless=False)
+        assert f"sandbox_workspace_write.network_access={expected}" in argv, (mode, sandbox)
+
+
+def test_codex_reads_only_recent_date_folders(hive_home, tmp_path):
+    import time as clock
+
+    from hive import codex
+
+    old = hive_home / "codex" / "sessions" / "2020" / "01" / "01"
+    today = hive_home / "codex" / "sessions" / clock.strftime("%Y/%m/%d")
+    for folder in (old, today):
+        folder.mkdir(parents=True)
+        (folder / "rollout-x.jsonl").write_text("{}\n")
+    assert codex.rollouts(clock.time() - 30) == [today / "rollout-x.jsonl"]
+
+
+def test_codex_checks_have_no_known_outcome(tmp_path):
+    """Codex's hook doesn't say whether a command failed, so the live log shows neither ✅ nor ❌."""
+    from hive.render import format_event
+
+    run_hook("events.py", {"hook_event_name": "PostToolUse", "tool_name": "Bash", "turn_id": "t", "session_id": "s",
+                           "tool_input": {"command": "curl https://x"}, "tool_response": "000"}, {"HIVE_RUN_DIR": str(tmp_path)})
+    check = json.loads((tmp_path / "events.jsonl").read_text().splitlines()[-1])
+    assert check["kind"] == "check" and check["ok"] is None
+    assert "✅" not in format_event(check) and "❌" not in format_event(check)
+
+
 def test_models_from_the_codex_account(hive_home, monkeypatch):
     """A ChatGPT plan offers its own models: they join the catalog and become the defaults."""
     from hive import models

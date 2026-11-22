@@ -148,7 +148,8 @@ Your own `~/.codex` and `~/.gemini` are never edited. GPT and Gemini prices come
 | Protected paths | hook | hook, once approved | hook |
 | Read-only scouts | hook | Codex sandbox (read-only role) | tool list (no write or shell tools) |
 | Read-only reviewers | hook | hook, once approved | instructions only (the CLI doesn't say which bee runs a tool) |
-| Live log | bees when they start and report | bees when they report (Codex has no hook for starting one) | bees when they start and report |
+| Live log | bees when they start and report, commands with ✅/❌ | bees when they report, commands without ✅/❌ (Codex's hooks don't say either) | bees when they start and report, commands with ✅/❌ |
+| Network for commands | yes | in `plan` and `auto` mode; not in `ask` mode or with `--sandbox` | yes |
 | `--budget` cap, `--compare`, local bees | yes | no | no |
 
 > GPT and Gemini have been run against signed-in CLIs (Codex 0.171, Gemini CLI 0.65) on small jobs only, so expect rough edges and run `hive doctor` first.
@@ -166,7 +167,7 @@ Your own `~/.codex` and `~/.gemini` are never edited. GPT and Gemini prices come
 
 ## Safety: what is enforced and what isn't
 
-- **Permissions are the CLI's.** In Claude Code, edits outside the granted folders need your approval, and in `auto` mode shell commands run without asking. Use `ask` mode, or `--sandbox` (writes only inside the granted folders), on machines that matter. Codex always sandboxes commands to the granted folders. The Gemini CLI runs them unsandboxed unless you pass `--sandbox`. In a headless run in `ask` mode, Claude Code and the Gemini CLI refuse risky actions; Codex runs them inside its sandbox.
+- **Permissions are the CLI's.** In Claude Code, edits outside the granted folders need your approval, and in `auto` mode shell commands run without asking. Use `ask` mode, or `--sandbox` (writes only inside the granted folders), on machines that matter. Codex always sandboxes commands to the granted folders, with network in `plan` and `auto` mode only. The Gemini CLI runs them unsandboxed unless you pass `--sandbox`. In a headless run in `ask` mode, Claude Code and the Gemini CLI refuse risky actions; Codex runs them inside its sandbox.
 - **Your code goes to the provider you chose:** Anthropic, OpenAI or Google, under that provider's terms.
 - **Hooks are guards, not a sandbox.** The protected-path and read-only-bee checks parse shell commands; a command such as `python -c "…"` can write without being noticed. `--sandbox` is the real boundary. On GPT the hooks only run once you've approved them (see [GPT setup](#gpt-codex-cli)).
 - **Acceptance commands run on your machine.** After a session the hive itself runs the acceptance commands with your shell, outside the CLI's permissions. Yours (`--done`, the profile's `test` command) always run. The Queen's own run automatically only in `plan` and `auto` mode without `--sandbox`, where she could have run them in the session anyway. In `ask` mode or with `--sandbox` you're asked first (default no), and headless runs skip them.

@@ -103,7 +103,7 @@ The hive never edits your own `~/.codex` or `~/.gemini`. It keeps its own config
 
 | | Codex | Gemini CLI |
 |---|---|---|
-| Home | `~/.hive/codex` (as `CODEX_HOME`) | `~/.hive/gemini` (as `GEMINI_CLI_HOME`); each session gets its own folder in `sessions/`, removed after two days |
+| Home | `~/.hive/codex` (as `CODEX_HOME`) | `~/.hive/gemini` (as `GEMINI_CLI_HOME`); each session gets its own folder in `sessions/`, removed after two weeks |
 | From your own home | `auth.json` and `config.toml`, linked if you have them | the login files (`oauth_creds.json`, `.env` …), linked; `settings.json`, copied with the hive's hooks added |
 | The Queen's instructions | passed per session (`developer_instructions`) | the session folder's `GEMINI.md`, so sessions running at once don't mix |
 | Bees | agent roles in `agents/*.toml` | sub-agents in `agents/*.md` |
@@ -127,7 +127,8 @@ The rules, bees, hooks and skills are generated there from the plugin's files on
 | Protected paths | hook | hook, once approved | hook |
 | Read-only scouts | hook | Codex's read-only sandbox | no write or shell tools |
 | Read-only reviewers | hook | hook, once approved | instructions only: the CLI doesn't tell hooks which bee runs a tool |
-| Live log | each bee when it starts and reports | each bee when it reports: Codex has no hook for starting one | each bee when it starts and reports |
+| Live log | each bee when it starts and reports; commands with ✅/❌ | each bee when it reports (Codex has no hook for starting one); commands without ✅/❌, since Codex's hooks don't report the exit code (the saved report has it) | each bee when it starts and reports; commands with ✅/❌ |
+| Network for commands | yes | in `plan` and `auto` mode (`sandbox_workspace_write.network_access`), so bees can install dependencies; off in `ask` mode and with `--sandbox` | yes |
 | Brief IDs | from the brief | from the task name (`s1_count_lines` → S1): Codex keeps briefs encrypted | from the brief |
 | Profile draft on first use | a Haiku scout reads the project | manifest files only, or the Queen with the `init` skill | manifest files only, or the Queen with the `init` skill |
 | `--budget` cap, `--compare`, local bees | yes | no | no |
@@ -210,7 +211,7 @@ The hive never commits. Review the changes with `git diff` and commit them yours
 | `--headless` | Run without the CLI's interface and stop at the end. This is the default when there's no terminal. |
 | `--budget USD` | Hard cap for a headless Claude run, 5 by default. Each `--compare` model gets the same cap. Claude Code has no cap for interactive sessions, and Codex and the Gemini CLI have none at all. |
 | `--scout/--builder/--reviewer MODEL` | A model for one kind of bee only, for example a local model (§11). |
-| `--sandbox` | Run shell commands in the CLI's sandbox. In Claude Code: writes only inside the granted folders and temp, network only to allowed domains, so installs may need approval. The Gemini CLI gets its own `--sandbox`. Codex always sandboxes commands to the granted folders. |
+| `--sandbox` | Run shell commands in the CLI's sandbox. In Claude Code: writes only inside the granted folders and temp, network only to allowed domains, so installs may need approval. The Gemini CLI gets its own `--sandbox`. Codex always sandboxes commands to the granted folders, and `--sandbox` also turns off its network. |
 | `--no-init` | Don't draft a profile on first use. |
 | `--no-waggle` | Don't have the Queen run the retro after each finished job. |
 
@@ -362,7 +363,7 @@ Things to know:
 
 - **Budget:** in headless Claude runs, `--budget` (default $5) is a hard cap, and the run stops with `error_max_budget_usd` when it's reached. Interactive Claude Code sessions have no cap, and Codex and the Gemini CLI have none at all: watch the cost in the CLI and the report. `--compare` multiplies the worst case by the number of models, and the hive asks before starting.
 - **Guards against runaway spending:** bees can't spawn bees in any of the three CLIs, and in Claude Code and Codex at most 5 run at once (the Gemini CLI has no such limit). In Claude Code the built-in subagents are disabled, and the Codex and Gemini Queens are told to use only the hive's bees, so every helper is a hive bee on the model you chose.
-- **Containment:** the hive works only in the folders you grant, and Claude Code asks before edits anywhere else. In Claude Code and the Gemini CLI, shell commands aren't sandboxed by default, so in `auto` mode a command *can* reach outside the folders. Use `--sandbox` or `ask` mode on sensitive machines. Codex always sandboxes commands to the granted folders.
+- **Containment:** the hive works only in the folders you grant, and Claude Code asks before edits anywhere else. In Claude Code and the Gemini CLI, shell commands aren't sandboxed by default, so in `auto` mode a command *can* reach outside the folders. Use `--sandbox` or `ask` mode on sensitive machines. Codex always sandboxes commands to the granted folders, with network in `plan` and `auto` mode only.
 - **Read-only bees:** a hook denies every file edit by scouts and reviewers, and every shell write outside the temp folders. In Codex this needs the hooks approved (§2); in the Gemini CLI scouts get no write tools and reviewers are read-only by instruction.
 - **Protected paths:** the hook blocks file tools and shell writes (`>`, `rm`, `mv`, `cp` to the path, `tee`, `sed -i`, `git checkout/restore` …) on protected paths. The shell check is a careful parse, not a sandbox.
 - **Git:** work in a git repo. The hive never commits, and the start point of each run is recorded, so `git diff` shows exactly what it did.

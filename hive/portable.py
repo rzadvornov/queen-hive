@@ -11,6 +11,9 @@ from pathlib import Path
 from hive import PLUGIN_DIR
 
 BEES = ("scout", "builder", "reviewer")
+# What a retro edits once you approve an item. Interactive Codex and Gemini sessions may write here (Claude Code
+# asks instead); the hook scripts next to them stay out of reach.
+RETRO_FOLDERS = (PLUGIN_DIR / "rules", PLUGIN_DIR / "agents")
 ICONS = {"scout": "🔎", "builder": "🔨", "reviewer": "🧐"}
 
 

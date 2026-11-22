@@ -10,6 +10,7 @@ from hivecore import (  # noqa: F401 - re-exported
     commands,
     ensure_project,
     hive_home,
+    private_home,
     profile_is_blank,
     project_dir,
     protected_paths,
@@ -31,8 +32,8 @@ def load_state() -> dict:
 
 
 def save_state(state: dict) -> None:
+    private_home()
     path = state_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(state, indent=2, ensure_ascii=False))
     tmp.replace(path)

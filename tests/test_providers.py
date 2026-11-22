@@ -533,6 +533,32 @@ def test_gemini_sign_in_errors_say_what_to_do():
     assert "set GEMINI_API_KEY" in gemini.failure("", stderr, 41)
 
 
+def test_retro_folders_are_writable_in_interactive_sessions_only(tmp_path, fake_bin):
+    """An approved retro item edits rules/ or agents/ in the plugin; Codex and Gemini may write only granted folders."""
+    from hive import codex, gemini, portable
+
+    fake_bin("codex", "")
+    fake_bin("gemini", "")
+    pdir = memory.ensure_project(tmp_path)
+    rules, agents = map(str, portable.RETRO_FOLDERS)
+    scripts = str(portable.PLUGIN_DIR / "scripts")
+    for headless in (False, True):
+        argv, _ = codex.command(job_for(tmp_path, "gpt-5.5", "gpt-6-luna"), pdir, "", "id", headless)
+        granted = [argv[i + 1] for i, a in enumerate(argv) if a == "--add-dir"]
+        assert (rules in granted and agents in granted) is not headless and scripts not in granted
+        argv, _ = gemini.command(job_for(tmp_path, "gemini-3.1-pro", "gemini-3-flash"), pdir, "", "sid", headless)
+        included = argv[argv.index("--include-directories") + 1].split(",")
+        assert (rules in included and agents in included) is not headless and scripts not in included
+
+
+def test_hive_home_is_private(hive_home):
+    import stat
+
+    hive_home.mkdir(mode=0o755)
+    memory.save_state({})
+    assert stat.S_IMODE(hive_home.stat().st_mode) == 0o700
+
+
 def test_models_from_the_codex_account(hive_home, monkeypatch):
     """A ChatGPT plan offers its own models: they join the catalog and become the defaults."""
     from hive import models

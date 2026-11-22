@@ -106,7 +106,7 @@ def command(job, pdir: Path, system: str, session_id: str, headless: bool) -> tu
     if headless:
         argv += ["exec", "--json", "--skip-git-repo-check"]
     argv += ["--cd", str(job.folders[0])]
-    for folder in [*job.folders[1:], pdir]:
+    for folder in [*job.folders[1:], pdir, *(() if headless else portable.RETRO_FOLDERS)]:
         argv += ["--add-dir", str(folder)]
     approval = "never" if headless else APPROVAL.get(job.mode, "on-request")
     argv += ["--model", job.queen.id,

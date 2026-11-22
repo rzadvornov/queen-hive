@@ -82,8 +82,21 @@ def project_dir(folder: str | Path) -> Path:
     return hive_home() / "projects" / f"{name}-{digest}"
 
 
+def private_home() -> Path:
+    """~/.hive, created owner-only: it holds goals, project memory and run logs."""
+    home = hive_home()
+    home.mkdir(parents=True, exist_ok=True)
+    try:
+        if home.stat().st_mode & 0o077:
+            home.chmod(0o700)
+    except OSError:
+        pass
+    return home
+
+
 def ensure_project(folder: str | Path) -> Path:
     """Create the memory folder with empty templates; never overwrites existing files."""
+    private_home()
     pdir = project_dir(folder)
     pdir.mkdir(parents=True, exist_ok=True)
     (pdir / "runs").mkdir(exist_ok=True)

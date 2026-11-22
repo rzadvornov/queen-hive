@@ -129,7 +129,7 @@ def command(job, pdir: Path, system: str, session_id: str, headless: bool) -> tu
     # Headless runs keep the mode's approval: the CLI's print mode leaves out the tools that would need it.
     argv = [providers.binary("gemini"), "--model", job.queen.id, "--session-id", session_id, "--skip-trust",
             "--approval-mode", APPROVAL.get(job.mode, "auto_edit"),
-            "--include-directories", ",".join(map(str, [*job.folders[1:], pdir]))]
+            "--include-directories", ",".join(map(str, [*job.folders[1:], pdir, *(() if headless else portable.RETRO_FOLDERS)]))]
     if job.sandbox:
         argv.append("--sandbox")
     if headless:

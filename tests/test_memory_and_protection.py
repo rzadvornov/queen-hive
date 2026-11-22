@@ -133,3 +133,16 @@ def test_lastrun_facts(tmp_path, hive_home):
     assert "failed report from B1" in out and "open: rounding on refunds" in out
     empty = subprocess.run([sys.executable, str(SCRIPTS_DIR / "lastrun.py"), str(tmp_path)], capture_output=True, text=True).stdout
     assert "No recorded hive run" in empty
+
+
+def test_memory_with_a_stray_byte_still_reads_and_protects(tmp_path):
+    """Agents write memory with shell commands, which can leave a non-UTF-8 byte; that must not crash the report
+    or switch off protected paths (the protect hook lets work through when it fails)."""
+    from hive import memory
+
+    pdir = memory.ensure_project(tmp_path)
+    (pdir / "progress.md").write_bytes(b"# Progress\n- 2026 \x85 note\n")
+    profile = (pdir / "profile.md").read_text().replace("## Protected paths\n", "## Protected paths\n- acceptance/\n")
+    (pdir / "profile.md").write_bytes(profile.encode() + b"\n- note \x85\n")
+    assert "note" in memory.read(pdir, "progress.md")
+    assert memory.protected_paths(pdir) == ["acceptance/"]

@@ -112,7 +112,7 @@ def ensure_project(folder: str | Path) -> Path:
 
 def profile_is_blank(pdir: Path) -> bool:
     path = pdir / "profile.md"
-    return not path.exists() or path.read_text().strip() == PROFILE_TEMPLATE.strip()
+    return not path.exists() or path.read_text(errors="replace").strip() == PROFILE_TEMPLATE.strip()
 
 
 def _section(text: str, title: str) -> list[str]:
@@ -131,7 +131,7 @@ def protected_paths(pdir: Path) -> list[str]:
     path = pdir / "profile.md"
     if not path.exists():
         return []
-    return [p.strip("`") for p in _section(path.read_text(), "Protected paths") if p.strip("`")]
+    return [p.strip("`") for p in _section(path.read_text(errors="replace"), "Protected paths") if p.strip("`")]
 
 
 def commands(pdir: Path) -> dict[str, str]:
@@ -140,7 +140,7 @@ def commands(pdir: Path) -> dict[str, str]:
     result: dict[str, str] = {}
     if not path.exists():
         return result
-    for item in _section(path.read_text(), "Commands"):
+    for item in _section(path.read_text(errors="replace"), "Commands"):
         key, _, value = item.partition(":")
         value = value.strip().strip("`").strip()
         if key.strip() and value:
@@ -176,7 +176,8 @@ def protecting_rule(target: str | Path) -> tuple[Path, str] | None:
 
 def read(pdir: Path, name: str) -> str:
     path = pdir / name
-    return path.read_text() if path.exists() else ""
+    # Agents write these with shell commands, which can leave a stray non-UTF-8 byte: show it, don't fail on it.
+    return path.read_text(errors="replace") if path.exists() else ""
 
 
 def tail(pdir: Path, name: str, lines: int = 10) -> str:

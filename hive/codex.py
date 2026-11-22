@@ -16,7 +16,7 @@ import threading
 import time
 from pathlib import Path
 
-from hive import CORE_DIR, memory, portable, providers
+from hive import CORE_DIR, memory, models, portable, providers
 from hive.pricing import Tokens
 from hivecore import brief_of_task
 
@@ -127,7 +127,7 @@ def command(job, pdir: Path, system: str, session_id: str, headless: bool) -> tu
              "-c", "agents.max_threads=5",
              "-c", "agents.max_depth=1"]
     if job.queen.queen_effort:
-        argv += ["-c", f"model_reasoning_effort={_toml(job.queen.queen_effort)}"]
+        argv += ["-c", f"model_reasoning_effort={_toml(models.coordinating_effort(job.queen))}"]
     if job.goal:
         argv += ["--", job.goal]
     return argv, env()

@@ -184,6 +184,17 @@ def _of(key: str | None, provider: str) -> Model | None:
     return model if model and (model.provider == provider or (provider == "claude" and model.local)) else None
 
 
+EFFORTS = ("low", "medium", "high", "xhigh", "max")
+QUEEN_EFFORT_CAP = "high"   # coordinating needs less thinking than solving alone; thinking is billed as output
+
+
+def coordinating_effort(model: Model) -> str | None:
+    """The Queen's effort: her model's own, at most QUEEN_EFFORT_CAP. A model alone keeps its full effort."""
+    if not model.queen_effort or model.queen_effort not in EFFORTS:
+        return model.queen_effort
+    return EFFORTS[min(EFFORTS.index(model.queen_effort), EFFORTS.index(QUEEN_EFFORT_CAP))]
+
+
 def default_compare(provider: str) -> list[str]:
     """The single models a job's cost is compared with."""
     if provider == "claude":

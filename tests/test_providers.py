@@ -639,6 +639,12 @@ def test_queen_gets_the_check_command(tmp_path):
         assert str(CORE_DIR / "scripts" / "check.py") in prompt and "keep your own context small" in prompt
 
 
+def test_queen_effort_is_capped_but_a_model_alone_keeps_its_own():
+    assert models.get("opus-5.5").queen_effort == "xhigh"
+    assert models.coordinating_effort(models.get("opus-5.5")) == "high"
+    assert models.coordinating_effort(models.get("sonnet-5.5")) == "high"
+
+
 def test_models_from_the_codex_account(hive_home, monkeypatch):
     """A ChatGPT plan offers its own models: they join the catalog and become the defaults."""
     from hive import models

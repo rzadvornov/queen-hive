@@ -147,7 +147,7 @@ def test_claude_command(tmp_path, monkeypatch):
     auto = argv("auto", goal="--fix the tests")
     value = lambda flag, cmd=auto: cmd[cmd.index(flag) + 1]
     assert value("--plugin-dir") == str(CORE_DIR) and value("--model") == "claude-opus-5-5"
-    assert value("--session-id") == "sess-1" and value("--permission-mode") == "acceptEdits" and value("--effort") == "xhigh"
+    assert value("--session-id") == "sess-1" and value("--permission-mode") == "acceptEdits" and value("--effort") == "high"   # Opus's own is xhigh; a coordinating Queen is capped
     assert auto[auto.index("--add-dir") + 1: auto.index("--add-dir") + 3] == [str(other), str(pdir)]
     assert "Bash" in auto and auto[-2:] == ["--", "--fix the tests"]      # a goal is never read as a flag
     system = value("--append-system-prompt")

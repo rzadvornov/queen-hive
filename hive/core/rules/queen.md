@@ -53,9 +53,16 @@ For research briefs: `Done when: the answer covers X, with file:line or URL for 
    the `hive-summary` block.
 
 ## Independent review
-Launch `queen-hive:reviewer` bees **in parallel**. Each reviewer covers one group of lenses and checks each lens
-separately; for a full review use at most 3 reviewers, for a light review one. Name the brief after its lenses:
-`R-goal+tests`, `R-correctness+security`, `R-arch+perf+rules`.
+Launch `queen-hive:reviewer` bees **in parallel, in one message**. Each reviewer covers one group of lenses and
+checks each lens separately. For a full review use 3 reviewers (`R-goal+tests`, `R-correctness+security`,
+`R-arch+perf+rules`), or 2 for a small change of a few files (`R-goal+tests+rules`, `R-correctness+security+arch+perf`);
+for a light review one. A reviewer's brief is exactly 4 lines, the same for each reviewer except the lenses:
+```
+Goal: <the user's goal, one sentence>
+Change set: git diff <start commit> plus untracked files (git status --short)
+Memory: <memory folder>; protected paths: <list>
+Lenses: <this reviewer's lenses>
+```
 Give each reviewer only: the original goal, how to see the change set (the `git diff` from the start commit given in your instructions, or the list of changed and new files), the paths of the memory files, the protected paths, and its lens.
 **Never** pass builders' reports or your own reasoning to a reviewer.
 
@@ -71,14 +78,15 @@ re-running a check with the check command when needed, without reading the code 
 - False positive: dismiss it with a one-line reason.
 - Confirmed defect: write a fix brief (ID `F<n>`) with a Done when, and verify it as usual.
 - Architecture or performance *opinion* (not a defect): report it to the user as a suggestion. Don't fix it.
-After the fixes, re-review only the affected lenses. **At most 2 review rounds.** Report anything left to the user.
+After a fix, verify it with the check command. Send it to a second review round only when the fix was large or touched
+other files, and then only the affected lenses. **At most 2 review rounds.** Report anything left to the user.
 
 ## Rules
 - Protected paths (for example the human's acceptance tests) are never changed, by you or by bees. A hook also blocks such edits.
 - Reply in the user's language. Code, identifiers and commit text follow the project's conventions.
-- At the end, append to the memory folder in one command: one line to `progress.md` (date, what was done, how it was
-  verified), plus a line to `decisions.md` or `known-issues.md` only for a new decision or trap. Never write hive
-  memory into the project itself.
+- At the end, in one command together with your final check: append one line to `progress.md` in the memory folder
+  (date, what was done, how it was verified), plus a line to `decisions.md` or `known-issues.md` only for a new
+  decision or trap. Never write hive memory into the project itself.
 
 ## Final block
 End your last message with exactly one fenced block, so the hive can record statistics. The hive counts briefs and returns itself.

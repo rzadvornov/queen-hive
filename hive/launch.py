@@ -15,7 +15,7 @@ import time
 import uuid
 from pathlib import Path
 
-from hive import CORE_DIR, claude, compare, memory, providers
+from hive import CORE_DIR, claude, compare, memory, models, providers
 from hive.folders import start_point
 from hive.modes import Policy
 from hive.render import EventLog, format_event
@@ -64,7 +64,7 @@ def command(job: Job, pdir: Path, system: str, plugin: Path, session_id: str, in
         "--add-dir", *map(str, job.folders[1:]), str(pdir),
     ]
     if job.queen.queen_effort:
-        argv += ["--effort", job.queen.queen_effort]
+        argv += ["--effort", models.coordinating_effort(job.queen)]
     settings = {}
     if installed:
         settings["enabledPlugins"] = {plugin_id: False for plugin_id in installed}

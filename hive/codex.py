@@ -10,16 +10,18 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import threading
 import time
 from pathlib import Path
 
-from hive import PLUGIN_DIR, memory, portable, providers
+from hive import CORE_DIR, memory, portable, providers
 from hive.pricing import Tokens
 from hivecore import brief_of_task
 
 SHARED = ("auth.json", "config.toml")   # linked from your Codex home
+HOOK_SCRIPTS = ("protect.py", "events.py", "hivecore.py")   # the hooks and the module they share
 SHELL_TOOLS = {"shell", "shell_command", "exec_command", "local_shell"}
 APPROVAL = {"plan": "on-request", "auto": "never", "ask": "untrusted"}
 READ_ONLY = {"scout"}
@@ -81,14 +83,22 @@ def prepare(bees: dict) -> Path:
             f"model_auto_compact_token_limit = {int(settings.get('autoCompactWindow', 100000))}",
             f"sandbox_mode = {_toml('read-only' if name in READ_ONLY else 'workspace-write')}",
         ]) + "\n")
-    hook = lambda script: {"type": "command", "command": f"python3 {shlex.quote(str(PLUGIN_DIR / 'scripts' / script))}"}
-    (root / "hooks.json").write_text(json.dumps({"hooks": {
+    # Codex's approval of a hook covers its command line, so the commands run copies of the scripts at a fixed
+    # place: moving or renaming the hive doesn't silently switch them off. (A script's contents may change.)
+    scripts = root / "hooks"
+    scripts.mkdir(exist_ok=True)
+    for name in HOOK_SCRIPTS:
+        shutil.copyfile(CORE_DIR / "scripts" / name, scripts / name)
+    hook = lambda script: {"type": "command", "command": f"python3 {shlex.quote(str(scripts / script))}"}
+    hooks = json.dumps({"hooks": {
         "PreToolUse": [{"matcher": "Bash|apply_patch", "hooks": [hook("protect.py")]},
                        {"matcher": "spawn_agent", "hooks": [hook("events.py")]}],
         "PostToolUse": [{"matcher": "Bash", "hooks": [hook("events.py")]}],
         "SubagentStop": [{"hooks": [hook("events.py")]}],
         "Stop": [{"hooks": [hook("events.py")]}],
-    }}, indent=2))
+    }}, indent=2)
+    if not (root / "hooks.json").exists() or (root / "hooks.json").read_text() != hooks:
+        (root / "hooks.json").write_text(hooks)   # only when it changes: its time tells whether an approval is current
     portable.export_skills(root / "skills")
     return root
 
@@ -155,10 +165,11 @@ def probe(model) -> tuple[bool, str]:
 
 
 def hooks_trusted() -> bool:
-    """Whether you approved hooks in the hive's Codex home: Codex keeps that in its config.toml ([hooks.state])
-    and runs no hook before it. Without them protected paths aren't guarded."""
+    """Whether you approved the hive's current hooks: Codex keeps approvals in its config.toml ([hooks.state]) and
+    runs no hook without one. An approval saved before hooks.json last changed no longer counts."""
+    config, hooks = home() / "config.toml", home() / "hooks.json"
     try:
-        return "hooks.state" in (home() / "config.toml").read_text()
+        return "hooks.state" in config.read_text() and (not hooks.exists() or config.stat().st_mtime >= hooks.stat().st_mtime)
     except OSError:
         return False
 

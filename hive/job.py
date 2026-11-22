@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from hive import PLUGIN_DIR, memory, models, portable, stats, verify
+from hive import CORE_DIR, memory, models, portable, stats, verify
 from hive.folders import StartPoint
 from hive.render import JobStats
 
@@ -61,10 +61,10 @@ def plugin_for(bees: dict[str, models.Model]) -> Path:
     """The plugin to load. When a bee runs on another model than the default, a copy with its model swapped."""
     default = models.get(models.DEFAULT_WORKERS)
     if all(model.key == default.key for model in bees.values()):
-        return PLUGIN_DIR
+        return CORE_DIR
     target = memory.hive_home() / "plugins" / "-".join(f"{bee}={bees[bee].key}" for bee in sorted(bees)).replace(":", "_")
     shutil.rmtree(target, ignore_errors=True)
-    shutil.copytree(PLUGIN_DIR, target, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(CORE_DIR, target, ignore=shutil.ignore_patterns("__pycache__"))
     for bee, model in bees.items():
         agent = target / "agents" / f"{bee}.md"
         agent.write_text(re.sub(r"^model: .*$", f"model: {model.id}", agent.read_text(), count=1, flags=re.M))

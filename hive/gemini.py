@@ -16,7 +16,7 @@ import threading
 import time
 from pathlib import Path
 
-from hive import PLUGIN_DIR, memory, portable, providers
+from hive import CORE_DIR, memory, portable, providers
 from hive.pricing import Tokens
 
 SHARED = ("oauth_creds.json", "google_accounts.json", "installation_id", ".env")   # linked from ~/.gemini
@@ -74,7 +74,7 @@ def settings() -> dict:
     if os.environ.get("GEMINI_API_KEY") and auth.get("selectedType") in (None, "oauth-personal"):
         auth["selectedType"] = "gemini-api-key"   # Google no longer serves personal logins to the CLI
     hook = lambda script, name: {"type": "command", "name": name,
-                                 "command": f"python3 {shlex.quote(str(PLUGIN_DIR / 'scripts' / script))}"}
+                                 "command": f"python3 {shlex.quote(str(CORE_DIR / 'scripts' / script))}"}
     bees = "|".join(BEE_TOOLS)
     ours = {
         "BeforeTool": [{"matcher": "write_file|replace|run_shell_command", "hooks": [hook("protect.py", "hive-protect")]},

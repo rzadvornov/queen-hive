@@ -26,7 +26,7 @@ build-backend = "setuptools.build_meta"
 include = ["hive*"]
 
 [tool.setuptools.package-data]
-hive = ["plugin/**/*", "plugin/.claude-plugin/*", ".claude-plugin/*", "dashboard/static/*"]
+hive = ["core/**/*", "core/.claude-plugin/*", ".claude-plugin/*", "dashboard/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

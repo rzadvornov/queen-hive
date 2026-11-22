@@ -145,6 +145,30 @@ def test_codex_hooks_need_your_approval(hive_home):
     assert codex.hooks_trusted()
 
 
+def test_codex_hook_commands_dont_depend_on_where_the_hive_lives(hive_home):
+    """Codex ties an approval to the hook's command line: the commands run copies at a fixed place, hooks.json
+    is rewritten only when it changes, and an approval older than its last change doesn't count."""
+    import os as _os
+
+    from hive import codex
+
+    bees = {name: models.get("gpt-6-luna") for name in ("scout", "builder", "reviewer")}
+    root = codex.prepare(bees)
+    hooks = json.loads((root / "hooks.json").read_text())["hooks"]
+    commands = {h["command"] for groups in hooks.values() for g in groups for h in g["hooks"]}
+    assert all(str(root / "hooks") in c for c in commands) and "/core/" not in " ".join(commands)
+    assert {p.name for p in (root / "hooks").iterdir()} >= {"protect.py", "events.py", "hivecore.py"}
+
+    stamp = (root / "hooks.json").stat().st_mtime_ns
+    codex.prepare(bees)
+    assert (root / "hooks.json").stat().st_mtime_ns == stamp                 # unchanged: not rewritten
+    (root / "config.toml").write_text('[hooks.state."x"]\ntrusted_hash = "y"\n')
+    assert codex.hooks_trusted()
+    later = (root / "config.toml").stat().st_mtime + 5
+    _os.utime(root / "hooks.json", (later, later))                            # the hooks changed after approval
+    assert not codex.hooks_trusted()
+
+
 def test_codex_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     from hive import codex
 
@@ -541,7 +565,7 @@ def test_retro_folders_are_writable_in_interactive_sessions_only(tmp_path, fake_
     fake_bin("gemini", "")
     pdir = memory.ensure_project(tmp_path)
     rules, agents = map(str, portable.RETRO_FOLDERS)
-    scripts = str(portable.PLUGIN_DIR / "scripts")
+    scripts = str(portable.CORE_DIR / "scripts")
     for headless in (False, True):
         argv, _ = codex.command(job_for(tmp_path, "gpt-5.5", "gpt-6-luna"), pdir, "", "id", headless)
         granted = [argv[i + 1] for i, a in enumerate(argv) if a == "--add-dir"]
@@ -561,33 +585,33 @@ def test_hive_home_is_private(hive_home):
 
 def test_bees_cant_change_the_hive_itself(tmp_path):
     """Retro edits to rules and bees are the Queen's; a bee is denied, on every CLI that names the bee."""
-    from hive import PLUGIN_DIR
+    from hive import CORE_DIR
 
-    queen_md = str(PLUGIN_DIR / "rules" / "queen.md")
+    queen_md = str(CORE_DIR / "rules" / "queen.md")
     patch = f"*** Begin Patch\n*** Update File: {queen_md}\n@@\n-a\n+b\n*** End Patch"
     for payload in ({"tool_name": "Edit", "agent_type": "haiku-hive:builder", "tool_input": {"file_path": queen_md}},
                     {"tool_name": "apply_patch", "agent_type": "builder", "tool_input": {"command": patch}},
                     {"tool_name": "Bash", "agent_type": "builder",
-                     "tool_input": {"command": f"echo x >> {PLUGIN_DIR / 'agents' / 'scout.md'}"}}):
+                     "tool_input": {"command": f"echo x >> {CORE_DIR / 'agents' / 'scout.md'}"}}):
         out = run_hook("protect.py", {"hook_event_name": "PreToolUse", "cwd": str(tmp_path), **payload},
-                       {"HIVE_PLUGIN_DIR": str(PLUGIN_DIR)})
+                       {"HIVE_CORE_DIR": str(CORE_DIR)})
         assert "don't change the hive itself" in json.loads(out)["hookSpecificOutput"]["permissionDecisionReason"]
     queen = run_hook("protect.py", {"hook_event_name": "PreToolUse", "cwd": str(tmp_path), "tool_name": "Edit",
-                                    "tool_input": {"file_path": queen_md}}, {"HIVE_PLUGIN_DIR": str(PLUGIN_DIR)})
+                                    "tool_input": {"file_path": queen_md}}, {"HIVE_CORE_DIR": str(CORE_DIR)})
     assert queen == ""                                                   # the Queen applies approved retro items
-    repo = PLUGIN_DIR.parent.parent                                      # working on the hive's own code
+    repo = CORE_DIR.parent.parent                                      # working on the hive's own code
     own = run_hook("protect.py", {"hook_event_name": "PreToolUse", "cwd": str(repo), "tool_name": "Edit",
                                   "agent_type": "builder", "tool_input": {"file_path": queen_md}},
-                   {"HIVE_PLUGIN_DIR": str(PLUGIN_DIR)})
+                   {"HIVE_CORE_DIR": str(CORE_DIR)})
     assert own == ""
     copy = tmp_path / "plugin-copy" / "scripts"                          # a plugin copy still guards the real one
     copy.mkdir(parents=True)
     for name in ("protect.py", "hivecore.py"):
-        (copy / name).write_text((PLUGIN_DIR / "scripts" / name).read_text())
+        (copy / name).write_text((CORE_DIR / "scripts" / name).read_text())
     out = subprocess.run([sys.executable, str(copy / "protect.py")], capture_output=True, text=True,
                          input=json.dumps({"hook_event_name": "PreToolUse", "cwd": str(tmp_path), "tool_name": "Write",
                                            "agent_type": "builder", "tool_input": {"file_path": queen_md}}),
-                         env={**os.environ, "HIVE_PLUGIN_DIR": str(PLUGIN_DIR)}).stdout
+                         env={**os.environ, "HIVE_CORE_DIR": str(CORE_DIR)}).stdout
     assert "don't change the hive itself" in out
 
 

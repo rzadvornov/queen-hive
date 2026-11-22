@@ -95,11 +95,11 @@ def test_read_only_bees(tmp_path, hive_home):
     import subprocess
     import sys
 
-    from hive import PLUGIN_DIR
+    from hive import CORE_DIR
 
     def decide(agent_type, tool, tool_input):
         payload = {"tool_name": tool, "tool_input": tool_input, "cwd": str(tmp_path), "agent_type": agent_type}
-        out = subprocess.run([sys.executable, str(PLUGIN_DIR / "scripts" / "protect.py")], input=json.dumps(payload),
+        out = subprocess.run([sys.executable, str(CORE_DIR / "scripts" / "protect.py")], input=json.dumps(payload),
                              capture_output=True, text=True).stdout
         return "deny" if '"deny"' in out else "pass"
 

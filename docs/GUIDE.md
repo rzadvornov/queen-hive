@@ -79,7 +79,7 @@ The first `hive` asks which AI runs the hive and remembers the answer in `~/.hiv
    ```bash
    CODEX_HOME=~/.hive/codex codex
    ```
-   Codex saves the approval in `~/.hive/codex/config.toml`. Editing the hive's hook scripts doesn't undo it; a change to the hooks themselves (`hooks.json`) makes Codex ask again.
+   Codex saves the approval in `~/.hive/codex/config.toml` and ties it to each hook's command line. The commands run copies of the hook scripts in `~/.hive/codex/hooks/`, refreshed on every run, so moving the hive or updating a script doesn't undo the approval; a change to `hooks.json` itself makes Codex ask again, and `hive doctor` then says so.
 5. `hive doctor` should show `hooks: approved`.
 
 Until the hooks are approved, a GPT run has **no protected-path guard, no read-only reviewers and no live log**: in a test, a GPT run wrote a protected `.env`, and once the hooks were approved the same write, and a patch to the same file, were blocked. `hive` warns on every GPT run until then.
@@ -109,9 +109,9 @@ The hive never edits your own `~/.codex` or `~/.gemini`. It keeps its own config
 | Bees | agent roles in `agents/*.toml` | sub-agents in `agents/*.md` |
 | Session logs (for the report) | `sessions/…/rollout-*.jsonl` | `.gemini/tmp/<project>/chats/`, shared by all sessions |
 
-The rules, bees, hooks and skills are generated there from the plugin's files on every run, so a retro still edits `rules/queen.md` and `agents/<name>.md` in the plugin, and the change reaches all three providers. Codex and the Gemini CLI write only inside granted folders, so interactive sessions also grant the plugin's `rules/` and `agents/` (not its hook scripts; headless runs, which have no retro, get neither). Only the Queen may write there: the protect hook denies bees, in Codex as in Claude Code. The Gemini CLI doesn't tell hooks which bee is calling, so there it rests on the bees' instructions.
+The rules, bees, hooks and skills are generated there from the files in `hive/core` on every run, so a retro still edits `rules/queen.md` and `agents/<name>.md` there, and the change reaches all three providers. Codex and the Gemini CLI write only inside granted folders, so interactive sessions also grant `hive/core/rules/` and `hive/core/agents/` (not its hook scripts; headless runs, which have no retro, get neither). Only the Queen may write there: the protect hook denies bees, in Codex as in Claude Code. The Gemini CLI doesn't tell hooks which bee is calling, so there it rests on the bees' instructions.
 
-**Bee settings** come from the plugin's `agents/<name>.md` frontmatter, as for the Haiku bees:
+**Bee settings** come from the frontmatter of `hive/core/agents/<name>.md`, as for the Haiku bees:
 
 | Frontmatter | Codex | Gemini CLI |
 |---|---|---|
@@ -307,7 +307,7 @@ It binds to localhost only, it's read-only, and it needs no internet.
 
 ## 10. The Claude Code plugin
 
-The bees, the Queen's rules, the hooks and the skills (`waggle`, `review`, `init`) live in a Claude Code plugin (`hive/plugin`). The `hive` CLI loads it automatically. To use it inside Claude Code too:
+The bees, the Queen's rules, the hooks and the skills (`waggle`, `review`, `init`) live in `hive/core`, which is laid out as a Claude Code plugin. The `hive` CLI loads it automatically. To use it inside Claude Code too:
 
 ```bash
 hive install-plugin
@@ -325,7 +325,7 @@ Then, in any Claude Code session:
 
 Inside Claude Code, permissions follow Claude Code's own settings, so there's no hive mode question. The protection hook is active there too.
 
-To try it without installing: `claude --plugin-dir ~/the-hive/hive/plugin`. Inside `hive` sessions an installed copy is switched off automatically, so nothing loads twice.
+To try it without installing: `claude --plugin-dir ~/the-hive/hive/core`. Inside `hive` sessions an installed copy is switched off automatically, so nothing loads twice.
 
 With GPT and Gemini there's nothing to install: `hive` generates the same rules, bees, hooks and skills from this plugin into its Codex and Gemini homes on every run (§2), and the skills are named without the prefix (`waggle`, `review`, `init`).
 
@@ -333,12 +333,12 @@ With GPT and Gemini there's nothing to install: `hive` generates the same rules,
 
 | To change | Edit |
 |---|---|
-| How the Queen works | `hive/plugin/rules/queen.md` |
-| A bee's instructions, tools or effort | `hive/plugin/agents/<bee>.md`. Keep `model:` a full ID such as `claude-haiku-5-5`. |
+| How the Queen works | `hive/core/rules/queen.md` |
+| A bee's instructions, tools or effort | `hive/core/agents/<bee>.md`. Keep `model:` a full ID such as `claude-haiku-5-5`. |
 | Bee model for one run | `--workers sonnet-5.5` for all bees, or `--scout`, `--builder`, `--reviewer` for one kind. The hive loads a copy of the plugin with those models swapped in. |
 | Model prices or new models | `hive/models.py` (`CATALOG`, with each model's `priced_on` date), or your own prices in `~/.hive/models.json` (§2) |
 | Project facts | `~/.hive/projects/<p>/profile.md`, or `hive init --force` |
-| Retro, review, profile drafting | `hive/plugin/skills/<waggle\|review\|init>/SKILL.md` |
+| Retro, review, profile drafting | `hive/core/skills/<waggle\|review\|init>/SKILL.md` |
 
 `hive waggle` proposes edits to exactly these files after a session, so let the hive tune itself and approve what makes sense.
 

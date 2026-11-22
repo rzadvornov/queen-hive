@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from hive import PLUGIN_DIR, memory, models, ui
+from hive import CORE_DIR, memory, models, ui
 from hive.folders import is_git
 
 # manifest file → (stack label, {command: value})
@@ -99,7 +99,7 @@ def heuristic_profile(root: Path, found: dict) -> str:
 
 def profile_rules() -> str:
     """The profile rules from the plugin's init skill: one source for `hive init` and the plugin."""
-    text = (PLUGIN_DIR / "skills" / "init" / "SKILL.md").read_text()
+    text = (CORE_DIR / "skills" / "init" / "SKILL.md").read_text()
     return text[text.index("## Profile rules"):].strip()
 
 

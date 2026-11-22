@@ -9,7 +9,7 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route
 
-from hive import PLUGIN_DIR, models
+from hive import CORE_DIR, models
 from hive.router import Router
 from hive.job import Job, plugin_for
 
@@ -70,7 +70,7 @@ def test_per_bee_models(tmp_path, hive_home):
     haiku, sonnet = models.get("haiku-5.5"), models.get("sonnet-5.5")
     local = models.add_local("qwen-coder", "qwen2.5-coder:14b")
     job = Job(goal="", folders=[tmp_path], queen=models.get("opus-5.5"), workers=haiku, mode="auto")
-    assert plugin_for(job.bee_models()) == PLUGIN_DIR and job.local_models() == {}
+    assert plugin_for(job.bee_models()) == CORE_DIR and job.local_models() == {}
 
     job.roles = {"scout": local, "builder": sonnet}
     plugin = plugin_for(job.bee_models())

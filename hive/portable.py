@@ -8,12 +8,12 @@ import re
 import shutil
 from pathlib import Path
 
-from hive import PLUGIN_DIR
+from hive import CORE_DIR
 
 BEES = ("scout", "builder", "reviewer")
 # What a retro edits once you approve an item. Interactive Codex and Gemini sessions may write here (Claude Code
 # asks instead); the hook scripts next to them stay out of reach.
-RETRO_FOLDERS = (PLUGIN_DIR / "rules", PLUGIN_DIR / "agents")
+RETRO_FOLDERS = (CORE_DIR / "rules", CORE_DIR / "agents")
 ICONS = {"scout": "🔎", "builder": "🔨", "reviewer": "🧐"}
 
 
@@ -44,7 +44,7 @@ The first line of every brief (the `prompt`) is a brief ID, then a few words:
 
 def rules_for(provider: str) -> str:
     """rules/queen.md, with the dispatch instructions of the provider's CLI."""
-    rules = (PLUGIN_DIR / "rules" / "queen.md").read_text()
+    rules = (CORE_DIR / "rules" / "queen.md").read_text()
     if provider == "claude":
         return rules
     rules = rules.replace("They run on Haiku unless your instructions name another model for a bee.",
@@ -56,12 +56,12 @@ def rules_for(provider: str) -> str:
 
 def plain(text: str) -> str:
     """Claude Code plugin names → the names the other CLIs use (`haiku-hive:scout` → `scout`)."""
-    return re.sub(r"`haiku-hive:([a-z-]+)`", r"`\1`", text).replace("${CLAUDE_PLUGIN_ROOT}", str(PLUGIN_DIR))
+    return re.sub(r"`haiku-hive:([a-z-]+)`", r"`\1`", text).replace("${CLAUDE_PLUGIN_ROOT}", str(CORE_DIR))
 
 
 def bee(name: str) -> tuple[str, str]:
     """(description, instructions) of a bee, from agents/<name>.md."""
-    text = (PLUGIN_DIR / "agents" / f"{name}.md").read_text()
+    text = (CORE_DIR / "agents" / f"{name}.md").read_text()
     _, front, body = text.split("---", 2)
     description = next((line.split(":", 1)[1].strip() for line in front.splitlines() if line.startswith("description:")), name)
     return description, plain(body.strip())
@@ -70,14 +70,14 @@ def bee(name: str) -> tuple[str, str]:
 def bee_settings(name: str) -> dict[str, str]:
     """The frontmatter of agents/<name>.md (effort, autoCompactWindow …): the Haiku bees' settings,
     which the other CLIs' bees get too."""
-    _, front, _ = (PLUGIN_DIR / "agents" / f"{name}.md").read_text().split("---", 2)
+    _, front, _ = (CORE_DIR / "agents" / f"{name}.md").read_text().split("---", 2)
     return {key.strip(): value.strip() for key, _, value in (line.partition(":") for line in front.splitlines()) if value}
 
 
 def export_skills(dest: Path) -> None:
     """Copy the plugin's skills to a CLI's skills folder, with paths and bee names it understands."""
     dest.mkdir(parents=True, exist_ok=True)
-    for skill in sorted((PLUGIN_DIR / "skills").glob("*/SKILL.md")):
+    for skill in sorted((CORE_DIR / "skills").glob("*/SKILL.md")):
         target = dest / skill.parent.name
         shutil.rmtree(target, ignore_errors=True)
         target.mkdir()

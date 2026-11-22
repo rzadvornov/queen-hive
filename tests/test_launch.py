@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from hive import PLUGIN_DIR, claude, launch, memory, models, records, transcript
+from hive import CORE_DIR, claude, launch, memory, models, records, transcript
 from hive.job import Job
 
 OPUS, HAIKU = "claude-opus-5-5", "claude-haiku-5-5"
@@ -142,22 +142,22 @@ def test_claude_command(tmp_path, monkeypatch):
     def argv(mode, goal="", waggle=True):
         job = Job(goal=goal, folders=[tmp_path, other], queen=models.get("opus-5.5"), workers=models.get("haiku-5.5"),
                   mode=mode, waggle=waggle)
-        return launch.command(job, pdir, launch.system_prompt(job, pdir, None), PLUGIN_DIR, "sess-1")
+        return launch.command(job, pdir, launch.system_prompt(job, pdir, None), CORE_DIR, "sess-1")
 
     auto = argv("auto", goal="--fix the tests")
     value = lambda flag, cmd=auto: cmd[cmd.index(flag) + 1]
-    assert value("--plugin-dir") == str(PLUGIN_DIR) and value("--model") == "claude-opus-5-5"
+    assert value("--plugin-dir") == str(CORE_DIR) and value("--model") == "claude-opus-5-5"
     assert value("--session-id") == "sess-1" and value("--permission-mode") == "acceptEdits" and value("--effort") == "xhigh"
     assert auto[auto.index("--add-dir") + 1: auto.index("--add-dir") + 3] == [str(other), str(pdir)]
     assert "Bash" in auto and auto[-2:] == ["--", "--fix the tests"]      # a goal is never read as a flag
     system = value("--append-system-prompt")
-    assert "Queen" in system and str(PLUGIN_DIR) in system and "haiku-hive:waggle" in system
+    assert "Queen" in system and str(CORE_DIR) in system and "haiku-hive:waggle" in system
 
     assert value("--permission-mode", argv("plan")) == "plan" and "--settings" not in auto
     job = Job(goal="", folders=[tmp_path], queen=models.get("opus-5.5"), workers=models.get("haiku-5.5"), mode="auto")
-    installed = launch.command(job, pdir, "", PLUGIN_DIR, "s", ["haiku-hive@hive-local"])
+    installed = launch.command(job, pdir, "", CORE_DIR, "s", ["haiku-hive@hive-local"])
     assert json.loads(value("--settings", installed)) == {"enabledPlugins": {"haiku-hive@hive-local": False}}
-    boxed = launch.command(dataclasses.replace(job, sandbox=True), pdir, "", PLUGIN_DIR, "s")
+    boxed = launch.command(dataclasses.replace(job, sandbox=True), pdir, "", CORE_DIR, "s")
     assert json.loads(value("--settings", boxed)) == {"sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True}}
     ask = argv("ask", waggle=False)
     assert "Bash" not in ask and "--" not in ask                          # risky commands ask; no goal, no prompt
@@ -199,7 +199,7 @@ def test_cli_routes_terminal_to_claude_and_scripts_to_headless(tmp_path, monkeyp
 
 
 def test_events_hook(tmp_path):
-    script = PLUGIN_DIR / "scripts" / "events.py"
+    script = CORE_DIR / "scripts" / "events.py"
     run_dir = tmp_path / "run"
     run_dir.mkdir()
     bee = tmp_path / "subagents" / "agent-a1.jsonl"

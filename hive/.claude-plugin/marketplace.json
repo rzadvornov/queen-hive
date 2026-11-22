@@ -4,8 +4,8 @@
   "plugins": [
     {
       "name": "haiku-hive",
-      "source": "./plugin",
-      "description": "The Hive: a Queen model directs Haiku worker bees."
+      "source": "./core",
+      "description": "The Hive: a Queen model directs cheap worker bees."
     }
   ]
 }

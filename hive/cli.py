@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from hive import PLUGIN_DIR, __version__, memory, models, providers, stats
+from hive import CORE_DIR, __version__, memory, models, providers, stats
 from hive.modes import MODES
 
 SUBCOMMANDS = ("run", "review", "init", "models", "provider", "stats", "dashboard", "waggle", "retro", "doctor",
@@ -390,10 +390,10 @@ def cmd_doctor(argv: list[str]) -> None:
         return
     version = subprocess.run([binary, "--version"], capture_output=True, text=True).stdout.strip()
     print(f"hive {__version__} · Claude Code {version or '?'} ({binary}) · python {sys.version.split()[0]}")
-    out = subprocess.run([binary, "plugin", "validate", str(PLUGIN_DIR)], capture_output=True, text=True)
+    out = subprocess.run([binary, "plugin", "validate", str(CORE_DIR)], capture_output=True, text=True)
     lines = (out.stdout + out.stderr).strip().splitlines()
     print("plugin validate: " + (lines[-1] if lines else "?"))
-    print(f"plugin: {PLUGIN_DIR}")
+    print(f"plugin: {CORE_DIR}")
     installed = claude.installed_plugins("haiku-hive")
     if installed:
         print(f"installed in Claude Code too: {', '.join(installed)} (switched off inside `hive` sessions)")
@@ -465,7 +465,7 @@ def cmd_install_plugin(argv: list[str]) -> None:
     claude = shutil.which("claude")
     if not claude:
         raise SystemExit("claude CLI not found on PATH.")
-    marketplace = PLUGIN_DIR.parent
+    marketplace = CORE_DIR.parent
     for cmd in ([claude, "plugin", "marketplace", "add", str(marketplace)],
                 [claude, "plugin", "install", "haiku-hive@hive-local"]):
         print("$ " + " ".join(cmd), flush=True)

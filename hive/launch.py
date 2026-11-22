@@ -15,7 +15,7 @@ import time
 import uuid
 from pathlib import Path
 
-from hive import PLUGIN_DIR, claude, compare, memory, providers
+from hive import CORE_DIR, claude, compare, memory, providers
 from hive.folders import start_point
 from hive.modes import Policy
 from hive.render import EventLog, format_event
@@ -38,7 +38,7 @@ unless the user asked to skip the retro."""
 
 def system_prompt(job: Job, pdir: Path, start) -> str:
     text = queen_prompt(job, pdir, start) + SESSION_NOTE.format(product=providers.PROVIDERS[job.provider].product,
-                                                                 plugin=PLUGIN_DIR)
+                                                                 plugin=CORE_DIR)
     skill = "haiku-hive:waggle" if job.provider == "claude" else "waggle"
     return text + WAGGLE_NOTE.format(skill=skill) if job.waggle else text
 
@@ -89,7 +89,7 @@ def run(job: Job, headless: bool = False) -> list[dict]:
         session_id=session_id, provider=job.provider)
 
     system = system_prompt(job, pdir, start)
-    env = {**os.environ, "HIVE_RUN_DIR": str(run_dir), "HIVE_PLUGIN_DIR": str(PLUGIN_DIR)}
+    env = {**os.environ, "HIVE_RUN_DIR": str(run_dir), "HIVE_CORE_DIR": str(CORE_DIR)}
     if job.provider == "claude":
         argv = command(job, pdir, system, plugin_for(job.bee_models()), session_id, claude.installed_plugins("haiku-hive"))
         env.update(SUBAGENT_ENV)

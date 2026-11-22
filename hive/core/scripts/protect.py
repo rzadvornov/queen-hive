@@ -34,7 +34,7 @@ GIT_WRITES = {"rm", "mv", "checkout", "restore"}
 READ_ONLY_BEES = {"scout", "reviewer"}
 # The hive's plugin: this copy, and the one `hive` loaded it from (a copy is used when a bee runs on another model).
 HIVE_ROOTS = {Path(__file__).resolve().parent.parent,
-              *([Path(os.environ["HIVE_PLUGIN_DIR"]).resolve()] if os.environ.get("HIVE_PLUGIN_DIR") else [])}
+              *([Path(os.environ["HIVE_CORE_DIR"]).resolve()] if os.environ.get("HIVE_CORE_DIR") else [])}
 SCRATCH = ("/tmp/", "/private/tmp/", "/var/folders/", "/dev/null")
 _REDIRECT = re.compile(r"^(\d*|&)>>?(.*)$")   # >, >>, 2>, &>, and attached forms like >file
 

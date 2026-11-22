@@ -91,7 +91,7 @@ Each provider remembers its own last Queen and bee model. A Queen and her bees a
 | GPT | GPT-5.5 with an API key; with a ChatGPT plan, the plan's own model (for example GPT-5.6-Terra) | GPT-6 Luna |
 | Gemini | Gemini 3.1 Pro | Gemini 3.5 Flash-Lite |
 
-All bees get the Haiku bees' settings, taken from the plugin's `agents/*.md`: medium effort (in the Gemini CLI, a medium thinking level), and in Codex compaction at 100k tokens.
+All bees get the Haiku bees' settings, taken from `hive/core/agents/*.md`: medium effort (in the Gemini CLI, a medium thinking level), and in Codex compaction at 100k tokens.
 
 ### Claude (Claude Code)
 

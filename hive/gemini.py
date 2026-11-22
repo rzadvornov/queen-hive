@@ -10,8 +10,10 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 from hive import PLUGIN_DIR, memory, portable, providers
@@ -44,8 +46,21 @@ def config_dir() -> Path:
     return home() / ".gemini"
 
 
-def env() -> dict[str, str]:
-    return {"GEMINI_CLI_HOME": str(home())}
+def env(root: Path | None = None) -> dict[str, str]:
+    return {"GEMINI_CLI_HOME": str(root or home())}
+
+
+def session_home(session_id: str) -> Path:
+    """A session's own Gemini home: GEMINI.md holds that session's Queen instructions, so two sessions
+    at once must not share one. Its chat logs go to the shared tmp/, where `locate` finds them."""
+    return home() / "sessions" / session_id
+
+
+def _prune(keep_days: float = 2) -> None:
+    cutoff = time.time() - keep_days * 86400
+    for old in (home() / "sessions").glob("*") if (home() / "sessions").exists() else []:
+        if old.is_dir() and old.stat().st_mtime < cutoff:
+            shutil.rmtree(old, ignore_errors=True)
 
 
 def settings() -> dict:
@@ -80,10 +95,15 @@ def settings() -> dict:
     return data
 
 
-def prepare(bees: dict, system: str = "") -> Path:
-    """The hive's Gemini home with the Queen's instructions and the bees on their models; returns it."""
-    root = config_dir()
+def prepare(bees: dict, system: str = "", root: Path | None = None) -> Path:
+    """A Gemini config folder (default: the hive's shared one) with the Queen's instructions and the bees
+    on their models; returns it."""
+    root = root or config_dir()
     (root / "agents").mkdir(parents=True, exist_ok=True)
+    if root != config_dir():   # chat logs stay in one place
+        (config_dir() / "tmp").mkdir(parents=True, exist_ok=True)
+        if not (root / "tmp").is_symlink():
+            (root / "tmp").symlink_to(config_dir() / "tmp")
     for name in SHARED:
         source, link = user_dir() / name, root / name
         if source.exists() and not link.exists() and not link.is_symlink():
@@ -102,9 +122,12 @@ def prepare(bees: dict, system: str = "") -> Path:
 
 
 def command(job, pdir: Path, system: str, session_id: str, headless: bool) -> tuple[list[str], dict]:
-    prepare(job.bee_models(), system)
+    _prune()
+    own = session_home(session_id)
+    prepare(job.bee_models(), system, own / ".gemini")
+    # Headless runs keep the mode's approval: the CLI's print mode leaves out the tools that would need it.
     argv = [providers.binary("gemini"), "--model", job.queen.id, "--session-id", session_id, "--skip-trust",
-            "--approval-mode", "yolo" if headless else APPROVAL.get(job.mode, "auto_edit"),
+            "--approval-mode", APPROVAL.get(job.mode, "auto_edit"),
             "--include-directories", ",".join(map(str, [*job.folders[1:], pdir]))]
     if job.sandbox:
         argv.append("--sandbox")
@@ -112,7 +135,7 @@ def command(job, pdir: Path, system: str, session_id: str, headless: bool) -> tu
         argv += ["--output-format", "json", "--prompt", job.goal]
     elif job.goal:
         argv += ["--prompt-interactive", job.goal]
-    return argv, env()
+    return argv, env(own)
 
 
 def _json(text: str) -> dict:

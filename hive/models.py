@@ -29,6 +29,7 @@ class Model:
     note: str = ""
     base_url: str | None = None       # local models: their own Anthropic-compatible server, e.g. Ollama
     provider: str = "claude"          # claude | gpt | gemini: the CLI that runs it
+    priced_on: str = PRICES_AS_OF     # when its price was last checked
 
     @property
     def local(self) -> bool:
@@ -50,7 +51,8 @@ CATALOG: tuple[Model, ...] = (
     Model("gpt-5.5", "gpt-5.5", "GPT-5.5", 5.0, 30.0, 0.50, "high", "default GPT Queen", provider="gpt"),
     Model("gpt-5.4", "gpt-5.4", "GPT-5.4", 2.50, 15.0, 0.25, "high", provider="gpt"),
     Model("gpt-5.3-codex", "gpt-5.3-codex", "GPT-5.3 Codex", 1.75, 14.0, 0.175, "high", "coding", provider="gpt"),
-    Model("gpt-6-luna", "gpt-6-luna", "GPT-6 Luna", 0.10, 0.50, 0.01, None, "worker bees", provider="gpt"),
+    Model("gpt-6-luna", "gpt-6-luna", "GPT-6 Luna", 0.10, 0.50, 0.01, None, "worker bees", provider="gpt",
+          priced_on="2026-11-22"),
     Model("gpt-5.4-mini", "gpt-5.4-mini", "GPT-5.4 mini", 0.25, 2.0, 0.025, None, "older bees", provider="gpt"),
     Model("gemini-3.1-pro", "gemini-3.1-pro-preview", "Gemini 3.1 Pro", 2.0, 12.0, 0.20, "high", "default Gemini Queen",
           provider="gemini"),
@@ -59,7 +61,7 @@ CATALOG: tuple[Model, ...] = (
     Model("gemini-3-flash", "gemini-3-flash-preview", "Gemini 3 Flash", 0.50, 3.0, 0.05, None, "worker bees",
           provider="gemini"),
     Model("gemini-3.5-flash-lite", "gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite", 0.30, 2.50, 0.03, None,
-          "worker bees", provider="gemini"),
+          "worker bees", provider="gemini", priced_on="2026-11-22"),
     Model("gemini-3.1-flash-lite", "gemini-3.1-flash-lite", "Gemini 3.1 Flash-Lite", 0.25, 1.50, 0.025, None,
           "cheapest bees", provider="gemini"),
 )
@@ -199,8 +201,14 @@ def _account_models(provider: str) -> set[str] | None:
     return {slug for slug, _, _ in codex.offered()} or None
 
 
+def prices_as_of(chosen: list[Model]) -> str:
+    """The date of the prices of these models: one date, or the oldest to the newest."""
+    dates = sorted({m.priced_on for m in chosen if not m.local and m.input}) or [PRICES_AS_OF]
+    return dates[0] if len(dates) == 1 else f"{dates[0]} to {dates[-1]}"
+
+
 def prices_note(provider: str) -> str:
-    note = f"prices as of {PRICES_AS_OF}"
+    note = f"prices as of {prices_as_of(catalog(provider))}"
     return note + " (estimates from price trackers; set your own in ~/.hive/models.json)" if provider in ESTIMATED_PRICES else note
 
 

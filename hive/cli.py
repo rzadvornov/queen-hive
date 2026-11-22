@@ -124,7 +124,7 @@ def cmd_run(argv: list[str]) -> None:
                              f"(default {','.join(models.DEFAULT_COMPARE)}; 'all' = every available Queen model).")
     parser.add_argument("--yes", action="store_true", help="don't ask to confirm --compare costs.")
     parser.add_argument("--headless", action="store_true",
-                        help="run the goal without Claude Code's interface and stop at the end (the default without a terminal).")
+                        help="run the goal without the CLI's interface and stop at the end (the default without a terminal).")
     parser.add_argument("--version", action="version", version=f"hive {__version__}")
     args = parser.parse_args(argv)
 
@@ -191,7 +191,7 @@ def _confirm(question: str) -> bool:
 
 
 def cmd_waggle(argv: list[str], prog: str) -> None:
-    """A retro of the project's last run, in Claude Code."""
+    """A retro of the project's last run, in the provider's CLI."""
     from hive import launch
     from hive.job import Job
 
@@ -207,7 +207,7 @@ def cmd_waggle(argv: list[str], prog: str) -> None:
 
 
 def cmd_review(argv: list[str]) -> None:
-    """An independent review of existing changes, in Claude Code."""
+    """An independent review of existing changes, in the provider's CLI."""
     from hive import launch
     from hive.job import Job
 
@@ -400,9 +400,9 @@ def _provider_check(key: str, chosen: bool) -> None:
     if key == "gpt":
         from hive import codex
 
-        line += (f" · login (hive's Codex home {codex.home()}): {codex.login_status()}\n"
-                 f"   Codex runs the hive's hooks (live log, protected paths) only once you trust them: run "
-                 f"`CODEX_HOME={codex.home()} codex` and approve them")
+        line += f" · login (hive's Codex home {codex.home()}): {codex.login_status()}"
+        line += ("\n   hooks: approved" if codex.hooks_trusted() else
+                 "\n⚠️  hooks: not approved, so protected paths aren't guarded: " + codex.TRUST_HINT.format(home=codex.home()))
     else:
         from hive import gemini
 

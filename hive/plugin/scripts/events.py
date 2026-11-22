@@ -13,7 +13,7 @@ import sys
 import time
 from pathlib import Path
 
-from hivecore import label_of, stage_of
+from hivecore import brief_of_task, label_of, stage_of
 
 
 def emit(run_dir: Path, kind: str, **data) -> None:
@@ -58,7 +58,18 @@ def bee_meta(data: dict) -> tuple[dict, Path | None]:
     try:
         return json.loads(path.with_name(path.name.replace(".jsonl", ".meta.json")).read_text()), path
     except (OSError, ValueError):
-        return {}, path
+        return _codex_meta(path), path
+
+
+def _codex_meta(path: Path) -> dict:
+    """A Codex bee's description, from the task name in its rollout's first line."""
+    try:
+        with path.open() as handle:
+            first = json.loads(handle.readline())
+    except (OSError, ValueError):
+        return {}
+    task = (first.get("payload") or {}).get("agent_path") if isinstance(first, dict) else None
+    return {"description": brief_of_task(task)} if task else {}
 
 
 DISPATCH_TOOLS = {"Agent", "Task", "spawn_agent", "invoke_agent", "scout", "builder", "reviewer"}
@@ -100,6 +111,7 @@ def from_gemini(data: dict) -> dict | None:
     event = GEMINI_EVENTS[data["hook_event_name"]]
     tool, response = data.get("tool_name"), data.get("tool_response") or {}
     text = _text(response.get("llmContent") or response.get("returnDisplay") or "") if isinstance(response, dict) else str(response)
+    text = re.sub(r"</?untrusted_context[^>]*>", "", text).strip()   # the CLI's wrapper around tool output
     if event == "PostToolUse" and tool in DISPATCH_TOOLS:   # the bee's report is the tool's result
         tool_input = data.get("tool_input") or {}
         brief = tool_input.get("prompt") or tool_input.get("query") or ""

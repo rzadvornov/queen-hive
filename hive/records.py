@@ -14,7 +14,7 @@ from hive.job import Job, build_record, new_run_dir
 
 
 def approved(cmds: list[str], job: Job, pdir: Path, headless: bool) -> list[str]:
-    """The acceptance commands to run here, with the user's shell and outside Claude Code's permissions.
+    """The acceptance commands to run here, with the user's shell and outside the CLI's permissions.
 
     The user's own commands (--done, the profile's test command) always run. The Queen's run too when she
     could have run them in the session anyway (plan and auto mode, no sandbox); otherwise only if the user
@@ -27,7 +27,7 @@ def approved(cmds: list[str], job: Job, pdir: Path, headless: bool) -> list[str]
     listed = "\n".join(f"   $ {c}" for c in queen)
     if not headless and ui.interactive():
         print(f"🛡  The Queen's acceptance commands:\n{listed}")
-        if ui.confirm("   run them here, outside Claude Code's permissions?", default=False):
+        if ui.confirm(f"   run them here, outside {providers.PROVIDERS[job.provider].product}'s permissions?", default=False):
             return cmds
     else:
         print(f"🛡  skipped the Queen's acceptance commands ({'ask mode' if job.mode == 'ask' else 'sandbox'}):\n{listed}")
@@ -74,8 +74,7 @@ def finish(job: Job, pdir: Path, run_dir: Path, start, session_id: str, workspac
     traces, exact = found
     if not traces:
         shutil.rmtree(run_dir, ignore_errors=True)
-        if exact:
-            print(f"🐝 session cost ${exact:.2f} · no hive job in it, so no run was recorded.")
+        print((f"🐝 session cost ${exact:.2f} · " if exact else "🐝 ") + "no hive job in it, so no run was recorded.")
         return []
 
     records = []

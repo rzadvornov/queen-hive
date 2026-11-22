@@ -37,6 +37,18 @@ def label_of(description: str, fallback: str = "#") -> str:
     return description.split()[0] if description and description.split() else fallback
 
 
+def brief_of_task(task: str) -> str:
+    """A Codex task name back to its brief's first line: s1_auth_entry_points → "S1 auth entry points",
+    r_arch_review → "R-arch review" (Codex keeps the brief itself encrypted)."""
+    words = task.rsplit("/", 1)[-1].split("_")
+    if not words or not words[0]:
+        return ""
+    head, rest = words[0].upper(), words[1:]
+    if head == "R" and rest:   # review lenses: R-arch, R-tests
+        head, rest = f"R-{rest[0]}", rest[1:]
+    return " ".join([head, *rest])
+
+
 def stage_of(agent: str, label: str) -> str:
     """The hive stage of a bee, from its agent type and brief label (S1, B2, R-arch, F1)."""
     agent = agent.rsplit(":", 1)[-1]

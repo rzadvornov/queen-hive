@@ -16,11 +16,14 @@ from pathlib import Path
 
 from hive import PLUGIN_DIR, memory, portable, providers
 from hive.pricing import Tokens
+from hivecore import brief_of_task
 
 SHARED = ("auth.json", "config.toml")   # linked from your Codex home
 SHELL_TOOLS = {"shell", "shell_command", "exec_command", "local_shell"}
 APPROVAL = {"plan": "on-request", "auto": "never", "ask": "untrusted"}
-READ_ONLY = {"scout"}   # sandboxed read-only; reviewers may run tests, so the protect hook guards them instead
+READ_ONLY = {"scout"}
+ENCRYPTED = re.compile(r"^gAAAA[\w=-]{20,}$")   # an encrypted message
+SLACK = 5   # seconds: the Queen's rollout starts after the hive starts Codex, give or take the clock   # sandboxed read-only; reviewers may run tests, so the protect hook guards them instead
 
 PREPARING = threading.Lock()   # `hive models --check` probes in parallel threads
 
@@ -142,6 +145,18 @@ def probe(model) -> tuple[bool, str]:
     return (False, error[:200]) if error else (True, "")
 
 
+def hooks_trusted() -> bool:
+    """Whether you approved hooks in the hive's Codex home: Codex keeps that in its config.toml ([hooks.state])
+    and runs no hook before it. Without them protected paths aren't guarded."""
+    try:
+        return "hooks.state" in (home() / "config.toml").read_text()
+    except OSError:
+        return False
+
+
+TRUST_HINT = ("open Codex once in the hive's home and approve the hive's hooks: CODEX_HOME={home} codex")
+
+
 def login_status() -> str:
     """`codex login status` as the hive's sessions see it."""
     try:
@@ -202,7 +217,7 @@ def locate(started: float, cwd: Path) -> Path | None:
     for path in rollouts(started):
         meta = _meta(path)
         stamp = _ts({"timestamp": meta.get("timestamp")}) or path.stat().st_mtime
-        if meta and not _is_bee(meta) and Path(meta.get("cwd") or "/").resolve() == cwd.resolve() and stamp >= started - 60:
+        if meta and not _is_bee(meta) and Path(meta.get("cwd") or "/").resolve() == cwd.resolve() and stamp >= started - SLACK:
             found.append((stamp, path))
     return min(found)[1] if found else None
 
@@ -299,8 +314,10 @@ def events(entries: list[dict]) -> list[dict]:
         elif entry.get("type") == "response_item" and kind in ("function_call", "custom_tool_call"):
             name, args, call = payload.get("name"), _args(payload), payload.get("call_id")
             if name == "spawn_agent":
-                out.append({"t": "dispatch", "id": call, "agent": args.get("agent_type") or "default",
-                            "brief": str(args.get("message") or args.get("task_name") or ""),
+                message, task = str(args.get("message") or ""), args.get("task_name") or ""
+                if ENCRYPTED.match(message) or not message:   # newer Codex encrypts the brief: its task name says what it was
+                    message = brief_of_task(task)
+                out.append({"t": "dispatch", "id": call, "agent": args.get("agent_type") or "default", "brief": message,
                             "task": args.get("task_name") or "", "ts": ts})
                 pending[call] = "bee"
             elif name in SHELL_TOOLS:

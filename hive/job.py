@@ -94,7 +94,8 @@ def queen_prompt(job: Job, pdir: Path, start: StartPoint | None) -> str:
                      "as the list of briefs, each with its Done when, plus the review lenses you will use. "
                      "Only after the user approves do you start building.")
     parts.append(memory.run_context(target))
-    return "\n".join(p for p in parts if p)
+    text = "\n".join(p for p in parts if p)
+    return text if job.provider == "claude" else portable.plain(text)   # `haiku-hive:init` → `init`
 
 
 def new_run_dir(pdir: Path) -> Path:
@@ -129,6 +130,7 @@ def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: Sta
         "acceptance": {"commands": acceptance_cmds, "results": results, "passed": verify.passed(results)},
         "estimates": stats.estimates(hive_data["tokens"], estimate_keys),
         "compare": compared,
-        "prices_as_of": models.PRICES_AS_OF,
+        "prices_as_of": models.prices_as_of([job.queen, *job.bee_models().values(),
+                                             *(models.get(k) for k in estimate_keys)]),
         "provider": job.provider,
     }

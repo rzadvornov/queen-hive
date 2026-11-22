@@ -14,7 +14,7 @@ from starlette.responses import FileResponse, HTMLResponse, JSONResponse, PlainT
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from hive import memory, models
+from hive import memory, models, providers
 
 STATIC = Path(__file__).parent / "static"
 LIVE_WINDOW = 6 * 3600   # a run without run_end that was touched this recently counts as live
@@ -189,16 +189,21 @@ async def api_projects(request: Request) -> Response:
 async def api_models(request: Request) -> Response:
     state = memory.load_state()
     return JSONResponse({
-        "prices_as_of": models.PRICES_AS_OF,
-        "last_queen": state.get("last_queen"),
-        "models": [{"key": m.key, "id": m.id, "name": m.name, "input": m.input, "output": m.output,
+        "providers": [{"key": p.key, "name": p.name, "product": p.product, "installed": providers.installed(p.key),
+                       "prices_as_of": models.prices_as_of(models.catalog(p.key)),
+                       "estimated": p.key in models.ESTIMATED_PRICES, "chosen": p.key == providers.saved(),
+                       "last_queen": models.remembered(state, p.key)[0].name} for p in providers.PROVIDERS.values()],
+        "models": [{"key": m.key, "id": m.id, "name": m.name, "provider": m.provider, "priced_on": m.priced_on,
+                    "input": m.input, "output": m.output,
                     "cache_read": m.cache_read, "role": "queen" if m.queen_effort else "bees", "note": m.note,
                     "access": models.access(state).get(m.key)} for m in models.catalog()],
     })
 
 
 async def api_models_check(request: Request) -> Response:
-    await models.check_access()
+    for key in providers.PROVIDERS:   # each provider whose CLI is here
+        if providers.installed(key):
+            await models.check_access(provider=key)
     return await api_models(request)
 
 

@@ -52,7 +52,10 @@ def test_runs_live_and_export(tmp_path):
 
     projects = client.get("/api/projects").json()
     assert projects[0]["root"] == str(root.resolve()) and "profile.md" in projects[0]["files"]
-    assert any(m["key"] == "opus-5.5" for m in client.get("/api/models").json()["models"])
+    data = client.get("/api/models").json()
+    assert any(m["key"] == "opus-5.5" and m["provider"] == "claude" for m in data["models"])
+    assert [p["key"] for p in data["providers"]] == ["claude", "gpt", "gemini"]
+    assert data["providers"][1]["last_queen"] == "GPT-5.5" and data["providers"][1]["estimated"]
 
 
 def test_background_up_and_down(capsys):
@@ -80,7 +83,7 @@ def test_background_up_and_down(capsys):
 def test_dashboard_answers_only_local_pages(monkeypatch):
     from hive import models
 
-    async def no_probe(keys=None):
+    async def no_probe(keys=None, provider="claude"):
         return {}
 
     monkeypatch.setattr(models, "check_access", no_probe)

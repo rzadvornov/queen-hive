@@ -276,11 +276,14 @@ async function viewProjects() {
 async function viewModels() {
   const data = await api("/api/models");
   const access = (a) => (!a ? '<span class="pill">not checked</span>' : a.ok ? '<span class="pill ok">available</span>' : `<span class="pill bad" title="${esc(a.error)}">no access</span>`);
-  app.innerHTML = `<h1>Models</h1><p class="sub">Prices per million tokens, as of ${esc(data.prices_as_of)}. Last Queen: ${esc(data.last_queen || "–")}.</p>
+  const table = (p) => `<h2>${esc(p.name)} <span class="muted" style="font-size:14px">${esc(p.product)}${p.chosen ? " · your choice" : ""}${p.installed ? "" : " · not installed"} · last Queen: ${esc(p.last_queen)} · prices as of ${esc(p.prices_as_of)}${p.estimated ? " (estimates)" : ""}</span></h2>
     <div class="table-wrap"><table><thead><tr><th>model</th><th>id</th><th>role</th><th class="num">input</th><th class="num">output</th><th class="num">cache read</th><th>access</th></tr></thead><tbody>
-    ${data.models.map((m) => `<tr><td>${esc(m.name)}<div class="muted" style="font-size:12px">${esc(m.note)}</div></td><td class="mono">${esc(m.id)}</td><td>${m.role === "queen" ? "👑 Queen" : "🐝 bees"}</td>
-      <td class="num">$${m.input}</td><td class="num">$${m.output}</td><td class="num">$${m.cache_read}</td><td>${access(m.access)}</td></tr>`).join("")}
-    </tbody></table></div><p style="margin-top:12px"><button class="primary" id="recheck">Re-check access</button> <span class="muted" id="recheck-note">sends one tiny request per model</span></p>`;
+    ${data.models.filter((m) => m.provider === p.key).map((m) => `<tr><td>${esc(m.name)}<div class="muted" style="font-size:12px">${esc(m.note)}</div></td><td class="mono">${esc(m.id)}</td><td>${m.role === "queen" ? "👑 Queen" : "🐝 bees"}</td>
+      <td class="num" title="price as of ${esc(m.priced_on)}">$${m.input}</td><td class="num">$${m.output}</td><td class="num">$${m.cache_read}</td><td>${access(m.access)}</td></tr>`).join("")}
+    </tbody></table></div>`;
+  app.innerHTML = `<h1>Models</h1><p class="sub">Prices per million tokens; hover a price for its date.</p>
+    ${data.providers.map(table).join("")}
+    <p style="margin-top:12px"><button class="primary" id="recheck">Re-check access</button> <span class="muted" id="recheck-note">sends one tiny request per model, in each installed CLI</span></p>`;
   document.getElementById("recheck").addEventListener("click", async (e) => {
     e.target.disabled = true; document.getElementById("recheck-note").textContent = "checking…";
     await api("/api/models/check", { method: "POST" }); viewModels();

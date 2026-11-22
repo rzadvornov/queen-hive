@@ -102,6 +102,12 @@ def run(job: Job, headless: bool = False) -> list[dict]:
     roles = "".join(f" ({bee}: {model.name})" for bee, model in job.roles.items())
     print(f"👑 Queen: {job.queen.name} · 🐝 bees: {job.workers.name}{roles} · mode: {job.mode} · review: {job.review}"
           + (f" · budget ${job.budget:g}" if headless and job.budget and job.provider == "claude" else ""))
+    if job.provider == "gpt":
+        from hive import codex
+
+        if not codex.hooks_trusted():
+            print("⚠️  Codex doesn't run the hive's hooks yet, so protected paths aren't guarded and there's no live log: "
+                  + codex.TRUST_HINT.format(home=codex.home()))
     started = time.time()
     with contextlib.ExitStack() as stack:
         if job.local_models():   # some bees run locally: Claude Code talks to the router, which splits the traffic

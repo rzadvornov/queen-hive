@@ -99,7 +99,7 @@ The first `hive` asks which AI to use and remembers it. `hive provider` changes 
 
 The hive keeps its own config home for Codex (`~/.hive/codex`) and the Gemini CLI (`~/.hive/gemini`), with your login linked in, so your own `~/.codex` and `~/.gemini` are never edited.
 
-Codex runs hooks only after you trust them, and the hive's hooks write the live log and guard protected paths. After your first GPT run, open Codex once in the hive's home and approve them: `CODEX_HOME=~/.hive/codex codex`. If a hive update changes the hooks, Codex asks again.
+Codex runs hooks only after you approve them, and the hive's hooks write the live log and guard protected paths. **Until you approve them, GPT runs don't guard protected paths** (a test wrote a protected `.env`; once approved, the same test was blocked); `hive` warns on each GPT run and `hive doctor` shows the state. After your first GPT run, open Codex once in the hive's home and approve them: `CODEX_HOME=~/.hive/codex codex`. If a hive update changes the hooks, Codex asks again.
 
 With a ChatGPT plan, Codex offers its own models (for example GPT-6-Luna) rather than the API's. The hive reads them from Codex and uses Codex's default; they show as $0, because a plan isn't billed per token. Set prices in `~/.hive/models.json` if you want estimates. GPT and Gemini prices come from price trackers, not the providers' pages: set your own in `~/.hive/models.json` (`{"prices": {"gpt-5.5": {"input": 5, "output": 30, "cache_read": 0.5}}}`).
 

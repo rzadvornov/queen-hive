@@ -74,6 +74,12 @@ def test_models_are_remembered_per_provider():
     assert all(m.provider == "claude" for m in models.queens())
 
 
+def test_price_dates_per_model():
+    assert models.get("gpt-6-luna").priced_on == "2026-11-22" and models.get("gpt-5.5").priced_on == models.PRICES_AS_OF
+    assert models.prices_as_of([models.get("gpt-5.5")]) == models.PRICES_AS_OF
+    assert models.prices_as_of([models.get("gpt-5.5"), models.get("gpt-6-luna")]) == f"{models.PRICES_AS_OF} to 2026-11-22"
+
+
 def test_price_overrides(hive_home):
     hive_home.mkdir(parents=True, exist_ok=True)
     (hive_home / "models.json").write_text(json.dumps({"prices": {"gpt-5.5": {"input": 1, "output": 2}}}))
@@ -122,6 +128,22 @@ def job_for(tmp_path, queen, workers, **kw):
                **kw)
 
 
+def test_other_queens_get_plain_skill_names(tmp_path):
+    from hive.job import queen_prompt
+
+    prompt = queen_prompt(job_for(tmp_path, "gemini-3.1-pro", "gemini-3-flash"), memory.ensure_project(tmp_path), None)
+    assert "`init` skill" in prompt and "haiku-hive:" not in prompt   # the profile is still a blank template
+
+
+def test_codex_hooks_need_your_approval(hive_home):
+    from hive import codex
+
+    assert not codex.hooks_trusted()
+    (hive_home / "codex").mkdir(parents=True)
+    (hive_home / "codex" / "config.toml").write_text('[hooks.state."hooks.json:pre_tool_use:0"]\ntrusted_hash = "x"\n')
+    assert codex.hooks_trusted()
+
+
 def test_codex_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     from hive import codex
 
@@ -168,8 +190,10 @@ def test_gemini_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
 
     assert argv[argv.index("--session-id") + 1] == "sid" and argv[argv.index("--approval-mode") + 1] == "yolo"
     assert argv[-2:] == ["--prompt-interactive", "write hello"]
-    root = hive_home / "gemini" / ".gemini"
-    assert env == {"GEMINI_CLI_HOME": str(hive_home / "gemini")}
+    own = hive_home / "gemini" / "sessions" / "sid"                    # its own home: GEMINI.md is this session's
+    root = own / ".gemini"
+    assert env == {"GEMINI_CLI_HOME": str(own)}
+    assert (root / "tmp").resolve() == (hive_home / "gemini" / ".gemini" / "tmp").resolve()   # logs in one place
     assert (root / "GEMINI.md").read_text() == "QUEEN RULES"
     settings = json.loads((root / "settings.json").read_text())
     assert settings["security"]["auth"]["selectedType"] == "gemini-api-key"
@@ -182,6 +206,10 @@ def test_gemini_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     assert {"match": {"overrideScope": "scout"}, "modelConfig": {"generateContentConfig": {
         "thinkingConfig": {"thinkingLevel": "MEDIUM"}}}} in overrides
     assert (root / "oauth_creds.json").is_symlink()
+    ask = job_for(tmp_path, "gemini-3.1-pro", "gemini-3-flash")
+    ask.mode = "ask"
+    argv, _ = gemini.command(ask, pdir, "", "sid2", True)
+    assert argv[argv.index("--approval-mode") + 1] == "default"      # headless ask mode doesn't run everything
 
 
 def rollout_lines(meta: dict, *items) -> str:
@@ -365,6 +393,46 @@ def test_codex_rollouts_without_user_message_events(hive_home):
     assert events[1]["task"] == "s1_count"
 
 
+def test_codex_encrypted_briefs_and_bee_labels(tmp_path):
+    """Newer Codex encrypts spawn_agent's message; the task name gives the brief ID back."""
+    from hive import codex
+    from hivecore import brief_of_task
+
+    assert brief_of_task("s1_auth_entry_points") == "S1 auth entry points"
+    assert brief_of_task("/root/r_arch_review") == "R-arch review" and brief_of_task("f2") == "F2"
+    entries = [json.loads(line) for line in rollout_lines({"id": "q", "cwd": str(tmp_path)}, (
+        "response_item", {"type": "function_call", "name": "spawn_agent", "call_id": "c1", "arguments": json.dumps(
+            {"task_name": "r_tests", "agent_type": "reviewer", "message": "gAAAAABrAsgsRyDRFQRrW509yqe0fMlyUjQcgQ=="})})).splitlines()]
+    dispatch = next(e for e in codex.events(entries) if e["t"] == "dispatch")
+    assert dispatch["brief"] == "R-tests" and dispatch["agent"] == "reviewer"
+
+    bee = tmp_path / "bee.jsonl"   # a finished bee, as Codex's SubagentStop hook names it
+    bee.write_text(rollout_lines({"id": "b", "agent_path": "/root/s1_count_lines", "agent_role": "scout"}))
+    run_hook("events.py", {"hook_event_name": "SubagentStop", "agent_id": "b", "agent_type": "scout",
+                           "agent_transcript_path": str(bee), "last_assistant_message": "5 lines"},
+             {"HIVE_RUN_DIR": str(tmp_path)})
+    report = json.loads((tmp_path / "events.jsonl").read_text().splitlines()[-1])
+    assert report["label"] == "S1" and report["stage"] == "scout" and report["text"] == "5 lines"
+
+
+def test_codex_session_is_not_an_earlier_one(hive_home, tmp_path):
+    """A session that started half a minute before this run is the previous run's, not this one."""
+    import time as clock
+
+    from hive import codex
+
+    day = hive_home / "codex" / "sessions" / "2030" / "01" / "01"
+    day.mkdir(parents=True)
+    started = clock.time()
+    stamp = lambda offset: clock.strftime("%Y-%m-%dT%H:%M:%SZ", clock.gmtime(started + offset))
+    (day / "rollout-old.jsonl").write_text(json.dumps({"type": "session_meta", "payload": {
+        "id": "old", "cwd": str(tmp_path), "source": "exec", "timestamp": stamp(-30)}}) + "\n")
+    assert codex.locate(started, tmp_path) is None
+    (day / "rollout-new.jsonl").write_text(json.dumps({"type": "session_meta", "payload": {
+        "id": "new", "cwd": str(tmp_path), "source": "exec", "timestamp": stamp(2)}}) + "\n")
+    assert codex.locate(started, tmp_path).name == "rollout-new.jsonl"
+
+
 def test_models_from_the_codex_account(hive_home, monkeypatch):
     """A ChatGPT plan offers its own models: they join the catalog and become the defaults."""
     from hive import models
@@ -420,7 +488,7 @@ def test_events_hook_translates_gemini(tmp_path):
     send({"hook_event_name": "AfterTool", "tool_name": "invoke_agent",
           "tool_input": {"agent_name": "scout", "prompt": "S1 find the auth code"}, "tool_response": {"llmContent": "auth.py:3"}})
     send({"hook_event_name": "AfterTool", "tool_name": "run_shell_command", "tool_input": {"command": "npm test"},
-          "tool_response": {"llmContent": "1 failed\nExit Code: 1"}})
+          "tool_response": {"llmContent": "<untrusted_context>1 failed\nExit Code: 1</untrusted_context>"}})
     chats.mkdir()
     (chats / "session-x.jsonl").write_text("".join(json.dumps(r) + "\n" for r in [
         {"id": "m1", "type": "gemini", "content": "All"}, {"id": "m1", "type": "gemini", "content": "All done."}]))
@@ -432,7 +500,7 @@ def test_events_hook_translates_gemini(tmp_path):
     assert [e["kind"] for e in events] == ["dispatch", "report", "check", "queen_text"]
     assert events[0]["label"] == "S1" and events[0]["stage"] == "scout" and events[0]["agent"] == "scout"
     assert events[1]["label"] == "S1" and events[1]["text"] == "auth.py:3"
-    assert events[2]["ok"] is False and events[3]["text"] == "All done."
+    assert events[2]["ok"] is False and events[2]["output"] == "1 failed\nExit Code: 1" and events[3]["text"] == "All done."
 
 
 def test_gemini_records_skip_injected_context_and_rewinds(tmp_path):

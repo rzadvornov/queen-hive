@@ -575,6 +575,11 @@ def test_bees_cant_change_the_hive_itself(tmp_path):
     queen = run_hook("protect.py", {"hook_event_name": "PreToolUse", "cwd": str(tmp_path), "tool_name": "Edit",
                                     "tool_input": {"file_path": queen_md}}, {"HIVE_PLUGIN_DIR": str(PLUGIN_DIR)})
     assert queen == ""                                                   # the Queen applies approved retro items
+    repo = PLUGIN_DIR.parent.parent                                      # working on the hive's own code
+    own = run_hook("protect.py", {"hook_event_name": "PreToolUse", "cwd": str(repo), "tool_name": "Edit",
+                                  "agent_type": "builder", "tool_input": {"file_path": queen_md}},
+                   {"HIVE_PLUGIN_DIR": str(PLUGIN_DIR)})
+    assert own == ""
     copy = tmp_path / "plugin-copy" / "scripts"                          # a plugin copy still guards the real one
     copy.mkdir(parents=True)
     for name in ("protect.py", "hivecore.py"):

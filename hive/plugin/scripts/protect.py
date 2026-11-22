@@ -149,12 +149,14 @@ def main() -> None:
                 if not str(Path(target).expanduser()).startswith(SCRATCH):
                     deny(f"The Hive: the {bee} bee is read-only and may write only to temp folders, not to {target}.")
 
-    if bee:
+    # Unless the hive is the project itself: then its plugin is your code, which bees work on as usual.
+    guarded = {root for root in HIVE_ROOTS if not (root == cwd.resolve() or cwd.resolve() in root.parents)}
+    if bee and guarded:
         shell = write_targets(shell_command(tool_input)) if tool in SHELL_TOOLS else []
         for target in [*edits, *shell]:
             path = Path(target).expanduser()
             path = (path if path.is_absolute() else cwd / path).resolve()
-            if any(path == root or root in path.parents for root in HIVE_ROOTS):
+            if any(path == root or root in path.parents for root in guarded):
                 deny(f"The Hive: bees don't change the hive itself ({path.name}). Report what should change; "
                      "the Queen applies retro edits the user approves.")
 

@@ -368,7 +368,7 @@ Things to know:
 - **Read-only bees:** a hook denies every file edit by scouts and reviewers, and every shell write outside the temp folders. In Codex this needs the hooks approved (§2); in the Gemini CLI scouts get no write tools and reviewers are read-only by instruction.
 - **Protected paths:** the hook blocks file tools and shell writes (`>`, `rm`, `mv`, `cp` to the path, `tee`, `sed -i`, `git checkout/restore` …) on protected paths. The shell check is a careful parse, not a sandbox.
 - **Git:** work in a git repo. The hive never commits, and the start point of each run is recorded, so `git diff` shows exactly what it did.
-- **The hive itself:** no bee may change its rules, bees, hooks or skills; the protect hook denies it (in the Gemini CLI, which doesn't name the calling bee, the bees' instructions say so). Only the Queen does, when she applies a retro item you approved.
+- **The hive itself:** no bee may change its rules, bees, hooks or skills; the protect hook denies it (in the Gemini CLI, which doesn't name the calling bee, the bees' instructions say so). Only the Queen does, when she applies a retro item you approved. The exception is a project that contains the hive itself (working on the hive's own code): there its files are ordinary project files.
 - **Data:** memory and run logs stay in `~/.hive`, which the hive keeps owner-only (permissions 700). The dashboard is local only: it answers only requests to `localhost` and POSTs from its own pages.
 - **Memory changes:** the report after a session lists every line the Queen added to the project memory (📝). Those lines become part of her instructions next time.
 

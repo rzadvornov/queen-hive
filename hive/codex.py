@@ -66,13 +66,14 @@ def prepare(bees: dict) -> Path:
             link.symlink_to(source)
     for name in portable.BEES:
         description, instructions = portable.bee(name)
-        model = bees[name]
+        model, settings = bees[name], portable.bee_settings(name)
         (root / "agents" / f"{name}.toml").write_text("\n".join([
             f"name = {_toml(name)}",
             f"description = {_toml(description)}",
             f"developer_instructions = {_toml(instructions)}",
             f"model = {_toml(model.id)}",
-            'model_reasoning_effort = "medium"',
+            f"model_reasoning_effort = {_toml(settings.get('effort', 'medium'))}",
+            f"model_auto_compact_token_limit = {int(settings.get('autoCompactWindow', 100000))}",
             f"sandbox_mode = {_toml('read-only' if name in READ_ONLY else 'workspace-write')}",
         ]) + "\n")
     hook = lambda script: {"type": "command", "command": f"python3 {shlex.quote(str(PLUGIN_DIR / 'scripts' / script))}"}

@@ -63,8 +63,8 @@ def test_hive_provider_command(capsys, monkeypatch):
 
 def test_models_are_remembered_per_provider():
     state = {}
-    assert [m.key for m in models.remembered(state, "gpt")] == ["gpt-5.5", "gpt-5.4-mini"]
-    assert [m.key for m in models.remembered(state, "gemini")] == ["gemini-3.1-pro", "gemini-3-flash"]
+    assert [m.key for m in models.remembered(state, "gpt")] == ["gpt-5.5", "gpt-6-luna"]
+    assert [m.key for m in models.remembered(state, "gemini")] == ["gemini-3.1-pro", "gemini-3.5-flash-lite"]
     models.remember(state, models.get("gpt-5.4"), models.get("gpt-5.4-mini"))
     models.remember(state, models.get("sonnet-5.5"), models.get("haiku-5.5"))
     assert models.remembered(state, "gpt")[0].key == "gpt-5.4"
@@ -96,7 +96,7 @@ def test_choose_keeps_models_within_the_provider(tmp_path, fake_bin, monkeypatch
                                                                     "provider": None, **kw})
 
     _, queen, workers, _ = cli._choose(args(queen="gpt-5.4"))          # the Queen's provider, without asking
-    assert (queen.key, workers.key) == ("gpt-5.4", "gpt-5.4-mini")
+    assert (queen.key, workers.key) == ("gpt-5.4", "gpt-6-luna")
     with pytest.raises(SystemExit, match="is a Claude model"):
         cli._choose(args(provider="gpt", workers="haiku-5.5"))
     providers.save("gemini")
@@ -143,7 +143,9 @@ def test_codex_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     assert (root / "auth.json").resolve() == (user / "auth.json").resolve()
     scout = (root / "agents" / "scout.toml").read_text()
     assert 'model = "gpt-5.4"' in scout and 'sandbox_mode = "read-only"' in scout
-    assert 'model = "gpt-5.4-mini"' in (root / "agents" / "builder.toml").read_text()
+    builder = (root / "agents" / "builder.toml").read_text()
+    assert 'model = "gpt-5.4-mini"' in builder
+    assert 'model_reasoning_effort = "medium"' in builder and "model_auto_compact_token_limit = 100000" in builder
     hooks = json.loads((root / "hooks.json").read_text())["hooks"]
     assert "protect.py" in hooks["PreToolUse"][0]["hooks"][0]["command"]
     skill = (root / "skills" / "review" / "SKILL.md").read_text()
@@ -175,6 +177,10 @@ def test_gemini_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     assert "protect.py" in settings["hooks"]["BeforeTool"][1]["hooks"][0]["command"]
     scout = (root / "agents" / "scout.md").read_text()
     assert "model: gemini-3-flash-preview" in scout and "write_file" not in scout and "kind: local" in scout
+    assert "max_turns: 100" in scout and "timeout_mins: 30" in scout
+    overrides = settings["modelConfigs"]["customOverrides"]
+    assert {"match": {"overrideScope": "scout"}, "modelConfig": {"generateContentConfig": {
+        "thinkingConfig": {"thinkingLevel": "MEDIUM"}}}} in overrides
     assert (root / "oauth_creds.json").is_symlink()
 
 
@@ -371,7 +377,7 @@ def test_models_from_the_codex_account(hive_home, monkeypatch):
     ]}))
     keys = [m.key for m in models.catalog("gpt")]
     assert "gpt-6-luna" in keys and "gpt-5.6-terra" in keys and "gpt-hidden" not in keys
-    assert [m.key for m in models.defaults("gpt")] == ["gpt-6-luna", "gpt-6-luna"]
+    assert [m.key for m in models.defaults("gpt")] == ["gpt-5.6-terra", "gpt-6-luna"]   # Luna is a bee, not a Queen
     assert models.default_compare("gpt") == []   # catalog models aren't offered; offered ones have no price
 
 
@@ -415,7 +421,10 @@ def test_events_hook_translates_gemini(tmp_path):
           "tool_input": {"agent_name": "scout", "prompt": "S1 find the auth code"}, "tool_response": {"llmContent": "auth.py:3"}})
     send({"hook_event_name": "AfterTool", "tool_name": "run_shell_command", "tool_input": {"command": "npm test"},
           "tool_response": {"llmContent": "1 failed\nExit Code: 1"}})
-    send({"hook_event_name": "AfterAgent", "prompt_response": "All done."})
+    chats.mkdir()
+    (chats / "session-x.jsonl").write_text("".join(json.dumps(r) + "\n" for r in [
+        {"id": "m1", "type": "gemini", "content": "All"}, {"id": "m1", "type": "gemini", "content": "All done."}]))
+    send({"hook_event_name": "AfterAgent", "prompt_response": "All done. done."})   # the hook's copy can repeat text
     run_hook("events.py", {"hook_event_name": "AfterTool", "tool_name": "run_shell_command",   # a bee's own command
                            "transcript_path": str(chats / "sid" / "bee.jsonl"), "tool_input": {"command": "ls"},
                            "tool_response": {"llmContent": "x"}}, {"HIVE_RUN_DIR": str(tmp_path)})

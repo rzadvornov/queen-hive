@@ -25,6 +25,7 @@ TOOLS = {
     "builder": [*READ, "write_file", "replace", "run_shell_command"],
     "reviewer": [*READ, "run_shell_command", "web_fetch"],
 }
+BEE_LIMITS = {"max_turns": 100, "timeout_mins": 30}   # the CLI's defaults (30 turns, 10 minutes) cut builders off
 BEE_TOOLS = ("invoke_agent", *portable.BEES)
 INJECTED = ("<session_context>",)   # user messages the CLI writes itself   # sub-agents: one invoke_agent tool, or a tool per agent in older CLIs
 
@@ -69,6 +70,11 @@ def settings() -> dict:
     hooks = data.setdefault("hooks", {})
     for event, groups in ours.items():
         hooks[event] = [*(hooks.get(event) or []), *groups]
+    # Sub-agents run under their own name as the override scope: give each bee its effort as a thinking level.
+    configs = data.setdefault("modelConfigs", {})
+    configs["customOverrides"] = [*(configs.get("customOverrides") or []), *(
+        {"match": {"overrideScope": name}, "modelConfig": {"generateContentConfig": {"thinkingConfig": {
+            "thinkingLevel": portable.bee_settings(name).get("effort", "medium").upper()}}}} for name in portable.BEES)]
     data.setdefault("hooksConfig", {})["enabled"] = True
     data.setdefault("experimental", {})["enableAgents"] = True
     return data
@@ -89,7 +95,8 @@ def prepare(bees: dict, system: str = "") -> Path:
         tools = "\n".join(f"  - {tool}" for tool in TOOLS[name])
         (root / "agents" / f"{name}.md").write_text(
             f"---\nname: {name}\ndescription: {json.dumps(description)}\nkind: local\ntools:\n{tools}\n"
-            f"model: {bees[name].id}\n---\n\n{instructions}\n")
+            f"model: {bees[name].id}\n" + "".join(f"{key}: {value}\n" for key, value in BEE_LIMITS.items())
+            + f"---\n\n{instructions}\n")
     portable.export_skills(root / "skills")
     return root
 

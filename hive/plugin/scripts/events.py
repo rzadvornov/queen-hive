@@ -76,6 +76,22 @@ def _text(content) -> str:
     return str(content)
 
 
+def _last_reply(transcript: Path) -> str:
+    """The model's last reply in a Gemini chat log; the hook's own prompt_response can repeat streamed text."""
+    replies = {}
+    try:
+        for line in transcript.read_text().splitlines():
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(record, dict) and record.get("type") == "gemini" and record.get("id"):
+                replies[record["id"]] = _text(record.get("content") or "")
+    except OSError:
+        return ""
+    return next((text for text in reversed(list(replies.values())) if text.strip()), "")
+
+
 def from_gemini(data: dict) -> dict | None:
     """A Gemini CLI hook payload in Claude Code's terms; None for a sub-agent's own tool calls."""
     transcript = Path(data.get("transcript_path") or "")
@@ -96,7 +112,7 @@ def from_gemini(data: dict) -> dict | None:
             event = "PostToolUseFailure"
         return {**data, "hook_event_name": event, "tool_name": "Bash", "tool_response": text}
     if event == "Stop":
-        return {"hook_event_name": "Stop", "last_assistant_message": data.get("prompt_response") or ""}
+        return {"hook_event_name": "Stop", "last_assistant_message": _last_reply(transcript) or data.get("prompt_response") or ""}
     return {**data, "hook_event_name": event}
 
 

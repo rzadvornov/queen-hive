@@ -106,7 +106,8 @@ def new_run_dir(pdir: Path) -> Path:
 def build_record(job: Job, pdir: Path, run_dir: Path, started: float, start: StartPoint | None, tracker: JobStats,
                  acceptance_cmds: list[str], results: list[dict], compared: list[dict], summary: dict | None) -> dict:
     hive_data = stats.hive_section(tracker)
-    estimate_keys = list(dict.fromkeys([*models.default_compare(job.provider), job.queen.key]))
+    priced = job.queen.input > 0   # a ChatGPT-plan model has no price to compare with
+    estimate_keys = list(dict.fromkeys([*models.default_compare(job.provider), *([job.queen.key] if priced else [])]))
     return {
         "id": run_dir.name,
         "started_at": started,

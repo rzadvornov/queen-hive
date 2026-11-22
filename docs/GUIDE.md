@@ -49,8 +49,8 @@ The first `hive` asks which AI runs the hive and remembers the answer in `~/.hiv
 | Provider | CLI | Sign in | Default Queen · bees |
 |---|---|---|---|
 | Claude | Claude Code, or `pip install -e ".[bundled]"` | Claude Code login or `ANTHROPIC_API_KEY` | Opus 5.5 · Haiku 5.5 |
-| GPT | Codex CLI (`npm install -g @openai/codex`) | `codex login` (ChatGPT plan) or `OPENAI_API_KEY` | GPT-5.5 · GPT-5.4 mini |
-| Gemini | Gemini CLI (`npm install -g @google/gemini-cli`) | `GEMINI_API_KEY` (Google AI Studio) or Vertex AI | Gemini 3.1 Pro · Gemini 3 Flash |
+| GPT | Codex CLI (`npm install -g @openai/codex`) | `codex login` (ChatGPT plan) or `OPENAI_API_KEY` | GPT-5.5 · GPT-6 Luna (with a ChatGPT plan: Codex's own Queen models · GPT-6 Luna) |
+| Gemini | Gemini CLI (`npm install -g @google/gemini-cli`) | `GEMINI_API_KEY` (Google AI Studio) or Vertex AI | Gemini 3.1 Pro · Gemini 3.5 Flash-Lite |
 
 - `hive provider` shows a menu, and `hive provider gpt` switches directly. Without a terminal, `hive provider` lists the providers and which are installed.
 - `--provider gemini` uses another provider for one run, without changing the saved choice. `--queen gpt-5.4` implies its provider too.
@@ -64,6 +64,7 @@ What differs from Claude:
 - **No `--budget` cap, no `--compare` and no local bees** for now.
 - **Read-only bees:** Codex runs scouts in its read-only sandbox, and the protect hook guards reviewers as in Claude Code. The Gemini CLI doesn't tell hooks which sub-agent is calling, so scouts get no write or shell tools, and reviewers are read-only by instruction only.
 - **Protected paths** are guarded by the same hook in all three CLIs: Claude's Write/Edit/Bash, Codex's apply_patch/Bash, and Gemini's write_file/replace/run_shell_command. Codex runs hooks only after you trust them: open `CODEX_HOME=~/.hive/codex codex` once and approve them (again if a hive update changes them). Until then GPT runs have no live log and no protected-path guard.
+- **Bee settings** come from the plugin's `agents/<name>.md` frontmatter, as for the Haiku bees: `effort` becomes Codex's `model_reasoning_effort` and the Gemini CLI's thinking level (per sub-agent, through `modelConfigs.customOverrides`), and `autoCompactWindow` becomes Codex's `model_auto_compact_token_limit`. Gemini bees may take up to 100 turns and 30 minutes (the CLI's defaults, 30 turns and 10 minutes, cut builders off).
 - **ChatGPT plan models:** a ChatGPT sign-in can't use the API models (GPT-5.5 …). The hive adds the models your Codex account lists (from its `models_cache.json`), uses Codex's default for the Queen and the bees, and leaves them out of cost estimates until you set prices.
 - GPT and Gemini have run against signed-in CLIs (Codex 0.171, Gemini CLI 0.65) on small jobs. `hive doctor` shows each CLI's version and sign-in state.
 

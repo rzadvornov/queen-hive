@@ -58,6 +58,13 @@ def bee(name: str) -> tuple[str, str]:
     return description, plain(body.strip())
 
 
+def bee_settings(name: str) -> dict[str, str]:
+    """The frontmatter of agents/<name>.md (effort, autoCompactWindow …): the Haiku bees' settings,
+    which the other CLIs' bees get too."""
+    _, front, _ = (PLUGIN_DIR / "agents" / f"{name}.md").read_text().split("---", 2)
+    return {key.strip(): value.strip() for key, _, value in (line.partition(":") for line in front.splitlines()) if value}
+
+
 def export_skills(dest: Path) -> None:
     """Copy the plugin's skills to a CLI's skills folder, with paths and bee names it understands."""
     dest.mkdir(parents=True, exist_ok=True)

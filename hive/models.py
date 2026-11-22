@@ -50,13 +50,16 @@ CATALOG: tuple[Model, ...] = (
     Model("gpt-5.5", "gpt-5.5", "GPT-5.5", 5.0, 30.0, 0.50, "high", "default GPT Queen", provider="gpt"),
     Model("gpt-5.4", "gpt-5.4", "GPT-5.4", 2.50, 15.0, 0.25, "high", provider="gpt"),
     Model("gpt-5.3-codex", "gpt-5.3-codex", "GPT-5.3 Codex", 1.75, 14.0, 0.175, "high", "coding", provider="gpt"),
-    Model("gpt-5.4-mini", "gpt-5.4-mini", "GPT-5.4 mini", 0.25, 2.0, 0.025, None, "worker bees", provider="gpt"),
+    Model("gpt-6-luna", "gpt-6-luna", "GPT-6 Luna", 0.10, 0.50, 0.01, None, "worker bees", provider="gpt"),
+    Model("gpt-5.4-mini", "gpt-5.4-mini", "GPT-5.4 mini", 0.25, 2.0, 0.025, None, "older bees", provider="gpt"),
     Model("gemini-3.1-pro", "gemini-3.1-pro-preview", "Gemini 3.1 Pro", 2.0, 12.0, 0.20, "high", "default Gemini Queen",
           provider="gemini"),
     Model("gemini-3.8-flash", "gemini-3.8-flash", "Gemini 3.8 Flash", 0.75, 3.75, 0.075, "high", "fast",
           provider="gemini"),
     Model("gemini-3-flash", "gemini-3-flash-preview", "Gemini 3 Flash", 0.50, 3.0, 0.05, None, "worker bees",
           provider="gemini"),
+    Model("gemini-3.5-flash-lite", "gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite", 0.30, 2.50, 0.03, None,
+          "worker bees", provider="gemini"),
     Model("gemini-3.1-flash-lite", "gemini-3.1-flash-lite", "Gemini 3.1 Flash-Lite", 0.25, 1.50, 0.025, None,
           "cheapest bees", provider="gemini"),
 )
@@ -66,8 +69,8 @@ DEFAULT_WORKERS = "haiku-5.5"
 DEFAULT_COMPARE = ("sonnet-5.5", "opus-4.8", "opus-5.5")
 DEFAULTS = {   # provider → (Queen, bees)
     "claude": (DEFAULT_QUEEN, DEFAULT_WORKERS),
-    "gpt": ("gpt-5.5", "gpt-5.4-mini"),
-    "gemini": ("gemini-3.1-pro", "gemini-3-flash"),
+    "gpt": ("gpt-5.5", "gpt-6-luna"),
+    "gemini": ("gemini-3.1-pro", "gemini-3.5-flash-lite"),
 }
 OLLAMA_URL = "http://localhost:11434"
 
@@ -151,8 +154,11 @@ def defaults(provider: str) -> tuple[Model, Model]:
         from hive import codex
 
         slugs = [slug for slug, _, _ in codex.offered()]
-        if slugs and queen not in slugs:
-            return get(slugs[0]), get(workers if workers in slugs else slugs[0])
+        if slugs:
+            usable = [get(slug) for slug in slugs]
+            queens_offered = [m for m in usable if m.queen_effort]
+            return (get(queen) if queen in slugs else (queens_offered or usable)[0],
+                    get(workers) if workers in slugs else usable[0])
     return get(queen), get(workers)
 
 

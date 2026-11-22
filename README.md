@@ -78,7 +78,7 @@ The first `hive` asks which AI to use and remembers it. `hive provider` changes 
 
 ## What you get
 
-- **Choose your AI and your Queen:** Claude (Fable 5.1, Opus 5.5, Sonnet 5.5 …, bees on Haiku 5.5), GPT (GPT-5.5, GPT-5.4 …, bees on GPT-5.4 mini) or Gemini (Gemini 3.1 Pro, 3.8 Flash, bees on Gemini 3 Flash). Any kind of bee can run on another model of the same provider. With Claude, a bee can also run on a **local model** through Ollama (`--scout qwen-coder`).
+- **Choose your AI and your Queen:** Claude (Fable 5.1, Opus 5.5, Sonnet 5.5 …, bees on Haiku 5.5), GPT (GPT-5.5, GPT-5.4 …, bees on GPT-6 Luna) or Gemini (Gemini 3.1 Pro, 3.8 Flash, bees on Gemini 3.5 Flash-Lite). Luna and Flash-Lite bees get the Haiku bees' settings: medium effort (Gemini: thinking level), and in Codex compaction at 100k tokens. Any kind of bee can run on another model of the same provider. With Claude, a bee can also run on a **local model** through Ollama (`--scout qwen-coder`).
 - **Runs in the CLI itself:** `hive` opens Claude Code, Codex or the Gemini CLI with the Queen's rules, the bees, the hooks and the skills loaded, then reports and records each job when you exit. Scripts and CI get a headless mode (`--headless`). In Claude Code there's also a `/haiku-hive:hive` plugin command.
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
 - **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.

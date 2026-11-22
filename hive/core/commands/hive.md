@@ -9,6 +9,8 @@ First run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hivepath.py" --context "$PWD"`
 instructions for this run, the same as `hive` gives them. If it says the profile is an empty template, run the
 `queen-hive:init` skill first.
 
+Your check command is `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/check.py" "<command>"`.
+
 Before you start the change, record the start point for the review. In a git repo, run `git rev-parse HEAD` and `git status --short`.
 
 When the job is finished and you have written the `hive-summary` block, run the `queen-hive:waggle` skill for this job, unless the user asked to skip the retro (for example "no waggle").

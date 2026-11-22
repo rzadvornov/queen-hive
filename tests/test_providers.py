@@ -615,6 +615,30 @@ def test_bees_cant_change_the_hive_itself(tmp_path):
     assert "don't change the hive itself" in out
 
 
+def test_check_helper_prints_only_the_verdict_and_the_tail(tmp_path):
+    """The Queen verifies with check.py: the verdict and a few lines, not the whole log in her context."""
+    from hive import CORE_DIR
+
+    check = [sys.executable, str(CORE_DIR / "scripts" / "check.py")]
+    noisy = "python3 -c \"[print(i) for i in range(100)]\""
+    ok = subprocess.run([*check, noisy], capture_output=True, text=True, cwd=tmp_path)
+    assert ok.returncode == 0 and ok.stdout.splitlines()[0].startswith("PASS · exit 0")
+    assert ok.stdout.splitlines()[1:] == ["95", "96", "97", "98", "99"]
+    bad = subprocess.run([*check, "--lines", "2", "python3 -c 'import sys; print(1); print(2); sys.exit(3)'"],
+                         capture_output=True, text=True, cwd=tmp_path)
+    assert bad.returncode == 1 and bad.stdout.splitlines() == ["FAIL · exit 3 · " + bad.stdout.split(" · ")[2].split("\n")[0], "1", "2"]
+
+
+def test_queen_gets_the_check_command(tmp_path):
+    from hive import CORE_DIR
+    from hive.job import queen_prompt
+
+    for queen in ("opus-5.5", "gpt-5.5", "gemini-3.1-pro"):
+        prompt = queen_prompt(job_for(tmp_path, queen, models.defaults(models.get(queen).provider)[1].key),
+                              memory.ensure_project(tmp_path), None)
+        assert str(CORE_DIR / "scripts" / "check.py") in prompt and "keep your own context small" in prompt
+
+
 def test_models_from_the_codex_account(hive_home, monkeypatch):
     """A ChatGPT plan offers its own models: they join the catalog and become the defaults."""
     from hive import models

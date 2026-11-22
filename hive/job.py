@@ -80,6 +80,8 @@ def queen_prompt(job: Job, pdir: Path, start: StartPoint | None) -> str:
         f"- Project folder (working directory): {target}",
         f"- Other granted folders: {', '.join(map(str, others))}" if others else "",
         f"- Worker bees run on {job.workers.name}.",
+        f'- Check command: `python3 "{CORE_DIR / "scripts" / "check.py"}" "<command>"` (add `--lines 15` before the command '
+        "for more output).",
         *[f"- The {bee} bee runs on {model.name}, a local model: keep its briefs short and explicit, and check its work "
           "with extra care." for bee, model in job.roles.items() if model.local],
         f"- {start.instructions()}" if start else "",

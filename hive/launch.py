@@ -31,6 +31,10 @@ something. For plain questions, just answer without a hive-summary block.
 The hive's own rules and bees, which a retro may edit, are in {plugin} (rules/queen.md, agents/<name>.md):
 edit them there, not in a copy."""
 
+# A headless run has no breaks to keep its cache warm through, so it takes the 5-minute prompt cache: 1-hour cache
+# writes cost 2x input, 5-minute ones 1.25x. (On a Claude subscription Claude Code picks 1 hour by itself.)
+HEADLESS_CACHE_TTL = "5m"
+
 WAGGLE_NOTE = """
 After each finished job, right after its hive-summary block, run the `{skill}` skill for that job,
 unless the user asked to skip the retro."""
@@ -94,6 +98,7 @@ def run(job: Job, headless: bool = False) -> list[dict]:
         argv = command(job, pdir, system, plugin_for(job.bee_models()), session_id, claude.installed_plugins(*claude.HIVE_PLUGIN_NAMES))
         env.update(SUBAGENT_ENV)
         if headless:
+            env.setdefault("CLAUDE_CODE_PROMPT_CACHE_TTL", HEADLESS_CACHE_TTL)
             argv[1:1] = ["-p", "--output-format", "json", "--permission-prompts", "none",
                          *(["--max-budget-usd", f"{job.budget:g}"] if job.budget else [])]
     else:

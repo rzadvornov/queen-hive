@@ -91,7 +91,8 @@ async def solo(key: str, goal: str, ws: Path, done: list[str], protected: list[s
             "--settings", json.dumps({**PROTECT_HOOK, **({"sandbox": SANDBOX} if sandbox else {})}),
             "--setting-sources", "project,local",
             *(["--max-budget-usd", f"{budget:g}"] if budget else [])]
-    env = {**os.environ, "CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS": "1", "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "40"}
+    env = {"CLAUDE_CODE_PROMPT_CACHE_TTL": "5m",   # as the headless hive run, so both pay the same cache rate
+           **os.environ, "CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS": "1", "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "40"}
     entry = {"model": key, "name": model.name, "workspace": str(ws)}
     started = time.time()
     result = await asyncio.to_thread(claude.print_mode, args, goal, ws, env)

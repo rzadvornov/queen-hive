@@ -240,10 +240,14 @@ def cmd_init(argv: list[str]) -> None:
 
     parser = argparse.ArgumentParser(prog="hive init", description="Draft or refresh a folder's hive profile.")
     parser.add_argument("folder", nargs="?", type=Path, default=Path.cwd())
-    parser.add_argument("--no-ai", action="store_true", help="only detect from manifest files; no scout.")
+    parser.add_argument("--no-ai", action="store_true", help="only detect from manifest files; no scout (Claude only).")
     parser.add_argument("--force", action="store_true", help="redraft even if a profile exists.")
     args = parser.parse_args(argv)
-    pdir = asyncio.run(init.run(args.folder, use_ai=not args.no_ai, force=args.force))
+    claude_runs = providers.current(ask=False) == "claude"   # the scout is a Claude Code bee
+    if not args.no_ai and not claude_runs:
+        print("   drafting from manifest files only (the scout runs in Claude Code). Answer n to keep the empty template "
+              "instead, and the Queen drafts the profile with the `init` skill in your first session.")
+    pdir = asyncio.run(init.run(args.folder, use_ai=not args.no_ai and claude_runs, force=args.force))
     print(f"memory folder: {pdir}")
 
 

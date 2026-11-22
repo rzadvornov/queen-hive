@@ -52,13 +52,20 @@ function reconstruct(events) {
       case "run_start": run.start = e; break;
       case "dispatch": {
         const brief = { ...e, status: "running", reports: [] };
-        run.briefs.set(e.id, brief); run.order.push(e.id);
+        const key = e.id || `${e.label}#${run.order.length}`;   // Gemini's dispatches carry no id
+        run.briefs.set(key, brief); run.order.push(key);
         run.timeline.push({ ts: e.ts, text: `👑 → ${esc(e.agent.split(":").pop())} <b>${esc(e.label)}</b> ${esc(e.description.slice(e.label.length))}` });
         break;
       }
       case "report": {
-        const b = run.briefs.get(e.id);
-        if (b) { b.reports.push(e.text); b.status = e.ok ? "reported" : "failed"; }
+        // Codex sends no dispatch event and Gemini no ids: match the report to its brief by ID, or give it its own card
+        let b = (e.id && run.briefs.get(e.id)) || [...run.briefs.values()].reverse().find((x) => x.label === e.label && x.status === "running");
+        if (!b) {
+          const key = e.id || `${e.label}#${run.order.length}`;
+          b = { label: e.label, agent: e.stage, stage: e.stage, description: e.label, prompt: "", status: "running", reports: [] };
+          run.briefs.set(key, b); run.order.push(key);
+        }
+        b.reports.push(e.text); b.status = e.ok ? "reported" : "failed";
         run.timeline.push({ ts: e.ts, text: `🐝 <b>${esc(e.label)}</b> ${e.ok ? "reported" : "failed"}` });
         break;
       }

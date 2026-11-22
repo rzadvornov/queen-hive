@@ -14,8 +14,8 @@ You don't know how the work was done, and that is on purpose: judge only what is
 1. Look at the change set the brief describes, for example `git diff <start-commit>` and `git status`, or the listed files.
 2. Read the project memory files named in the brief (decisions, known issues, protected paths).
 3. Review **only from your lens**. For the `tests` lens, actually run the commands. For `perf`, a quick measurement beats a guess.
-4. Reply with one line per finding:
+4. Start your reply with a line `🐝 <brief ID>` (for example `🐝 R-arch`), then one line per finding:
    `severity (high|medium|low|suggestion) · file:line or source · what is wrong · evidence`
    Use `suggestion` for opinions ("could be structured differently") that aren't defects.
 
-Never modify files. Don't report things outside your lens. If there is nothing to report, reply exactly: `No findings`.
+Never modify files. Don't report things outside your lens. If there is nothing to report, put exactly `No findings` after that first line.

@@ -13,6 +13,7 @@ from hivecore import stage_of  # noqa: F401 - re-exported
 AGENT_TOOLS = ("Agent", "Task")
 _SUMMARY_RE = re.compile(r"```hive-summary\s*\n.*?```", re.S)
 _TAG_RE = re.compile(r"<([a-z-]+)>.*?</\1>", re.S)
+_BEE_TAG = re.compile(r"^\W*🐝\s*[A-Z][\w-]*\s*[—–:-]?\s*")   # "🐝 S1 — …" at the start of a bee's report
 STAGE_ICONS = {"queen": "👑", "scout": "🔎", "build": "🔨", "review": "🧐", "fix": "🩹"}
 
 
@@ -110,9 +111,11 @@ def format_event(event: dict) -> str | None:
         return f"👑 🔍 $ {_short(event.get('command', ''), 160)}\n   {mark} {_short(tail[0], 160)}"
     if kind == "report":
         clean = _TAG_RE.sub("", event.get("text") or "")
-        first = next((line for line in clean.splitlines() if line.strip() and not line.startswith("agentId")), "")
+        lines = [line for line in clean.splitlines() if line.strip() and not line.startswith("agentId")]
+        lines = [_BEE_TAG.sub("", line, count=1) for line in lines[:1]] + lines[1:]   # the bee's own "🐝 S1"
+        first = next((line for line in lines if line.strip()), "")
         return f"   🐝 {event.get('label', '?')} {'📨' if event.get('ok', True) else '❌'} {_short(first, 150)}"
     if kind == "queen_text":
-        visible = _SUMMARY_RE.sub("", event.get("text") or "").strip()
+        visible = _SUMMARY_RE.sub("", event.get("text") or "").strip().removeprefix("👑").strip()   # she starts with 👑 herself
         return f"👑 {visible}" if visible else None
     return None

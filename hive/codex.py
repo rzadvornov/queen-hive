@@ -73,6 +73,7 @@ def prepare(bees: dict) -> Path:
         model, settings = bees[name], portable.bee_settings(name)
         (root / "agents" / f"{name}.toml").write_text("\n".join([
             f"name = {_toml(name)}",
+            f"nickname_candidates = [{_toml(name.capitalize() + ' bee')}]",   # ASCII only, or Codex rejects the role
             f"description = {_toml(description)}",
             f"developer_instructions = {_toml(instructions)}",
             f"model = {_toml(model.id)}",

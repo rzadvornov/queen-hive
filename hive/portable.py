@@ -11,6 +11,12 @@ from pathlib import Path
 from hive import PLUGIN_DIR
 
 BEES = ("scout", "builder", "reviewer")
+ICONS = {"scout": "🔎", "builder": "🔨", "reviewer": "🧐"}
+
+
+def display_name(bee: str) -> str:
+    """How a CLI that shows bee names shows this one: "🔎 Scout bee"."""
+    return f"{ICONS[bee]} {bee.capitalize()} bee"
 
 DISPATCH = {
     "gpt": """Dispatch them with the `spawn_agent` tool. Set `agent_type` to one of these roles:

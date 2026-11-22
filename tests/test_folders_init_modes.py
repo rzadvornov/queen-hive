@@ -1,8 +1,6 @@
 import asyncio
 import json
 
-import pytest
-
 from hive import folders, init
 from hive.modes import Policy
 

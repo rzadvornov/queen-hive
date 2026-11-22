@@ -129,6 +129,7 @@ The rules, bees, hooks and skills are generated there from the plugin's files on
 | Read-only reviewers | hook | hook, once approved | instructions only: the CLI doesn't tell hooks which bee runs a tool |
 | Live log | each bee when it starts and reports; commands with ✅/❌ | each bee when it reports (Codex has no hook for starting one); commands without ✅/❌, since Codex's hooks don't report the exit code (the saved report has it) | each bee when it starts and reports; commands with ✅/❌ |
 | Network for commands | yes | in `plan` and `auto` mode (`sandbox_workspace_write.network_access`), so bees can install dependencies; off in `ask` mode and with `--sandbox` | yes |
+| Bee names in the CLI | `haiku-hive:scout` … | "Scout bee" … (Codex allows only ASCII in names) | "🔎 Scout bee" … |
 | Brief IDs | from the brief | from the task name (`s1_count_lines` → S1): Codex keeps briefs encrypted | from the brief |
 | Profile draft on first use | a Haiku scout reads the project | manifest files only, or the Queen with the `init` skill | manifest files only, or the Queen with the `init` skill |
 | `--budget` cap, `--compare`, local bees | yes | no | no |

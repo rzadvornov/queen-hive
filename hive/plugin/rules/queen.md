@@ -18,6 +18,10 @@ At most 5 bees can run at once. Dispatch larger reviews in waves of up to 5.
 Bees see only the prompt you give them. Put every path, constraint and expected output in the brief.
 If a bee runs in the background, wait for its report before you accept, verify or finish.
 
+## In the chat
+Start each of your messages to the user with 👑. When you send a bee or relay its report, name it with its icon:
+🔎 scout, 🔨 builder, 🧐 reviewer, for example `👑 → 🔨 B2 add promo module` or `🐝 🧐 R-tests: no findings`.
+
 ## Brief template (at most 10 lines)
 ```
 Goal: what to do, in one sentence.

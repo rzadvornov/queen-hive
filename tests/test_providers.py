@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import subprocess
 import sys
@@ -168,6 +169,8 @@ def test_codex_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     builder = (root / "agents" / "builder.toml").read_text()
     assert 'model = "gpt-5.4-mini"' in builder
     assert 'model_reasoning_effort = "medium"' in builder and "model_auto_compact_token_limit = 100000" in builder
+    nickname = re.search(r'nickname_candidates = \["([^"]*)"\]', builder).group(1)
+    assert nickname == "Builder bee" and re.fullmatch(r"[A-Za-z0-9 _-]+", nickname)   # Codex rejects the role otherwise
     hooks = json.loads((root / "hooks.json").read_text())["hooks"]
     assert "protect.py" in hooks["PreToolUse"][0]["hooks"][0]["command"]
     skill = (root / "skills" / "review" / "SKILL.md").read_text()
@@ -202,6 +205,7 @@ def test_gemini_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     scout = (root / "agents" / "scout.md").read_text()
     assert "model: gemini-3-flash-preview" in scout and "write_file" not in scout and "kind: local" in scout
     assert "max_turns: 100" in scout and "timeout_mins: 30" in scout
+    assert 'display_name: "\U0001f50e Scout bee"' in scout
     overrides = settings["modelConfigs"]["customOverrides"]
     assert {"match": {"overrideScope": "scout"}, "modelConfig": {"generateContentConfig": {
         "thinkingConfig": {"thinkingLevel": "MEDIUM"}}}} in overrides
@@ -468,6 +472,15 @@ def test_codex_checks_have_no_known_outcome(tmp_path):
     check = json.loads((tmp_path / "events.jsonl").read_text().splitlines()[-1])
     assert check["kind"] == "check" and check["ok"] is None
     assert "✅" not in format_event(check) and "❌" not in format_event(check)
+
+
+def test_icons_are_not_doubled_in_the_log():
+    """The Queen starts her messages with 👑 and bees their reports with 🐝 <ID>; the log adds its own."""
+    from hive.render import format_event
+
+    assert format_event({"kind": "queen_text", "text": "👑 Done."}) == "👑 Done."
+    assert format_event({"kind": "report", "label": "S1", "ok": True, "text": "🐝 S1 — 5 lines"}) == "   🐝 S1 📨 5 lines"
+    assert format_event({"kind": "report", "label": "B2", "ok": True, "text": "🐝 B2\n- Changed: a.py"}) == "   🐝 B2 📨 - Changed: a.py"
 
 
 def test_models_from_the_codex_account(hive_home, monkeypatch):

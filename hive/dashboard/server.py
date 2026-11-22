@@ -186,8 +186,9 @@ async def api_projects(request: Request) -> Response:
     return JSONResponse(rows)
 
 
-async def api_models(request: Request) -> Response:
-    state = memory.load_state()
+async def api_models(request: Request, fresh: dict | None = None) -> Response:
+    """fresh: the results of a check just run, which win over the saved ones (a sign-in failure isn't saved)."""
+    state, fresh = memory.load_state(), fresh or {}
     return JSONResponse({
         "providers": [{"key": p.key, "name": p.name, "product": p.product, "installed": providers.installed(p.key),
                        "prices_as_of": models.prices_as_of(models.catalog(p.key)),
@@ -196,15 +197,16 @@ async def api_models(request: Request) -> Response:
         "models": [{"key": m.key, "id": m.id, "name": m.name, "provider": m.provider, "priced_on": m.priced_on,
                     "input": m.input, "output": m.output,
                     "cache_read": m.cache_read, "role": "queen" if m.queen_effort else "bees", "note": m.note,
-                    "access": models.access(state).get(m.key)} for m in models.catalog()],
+                    "access": fresh.get(m.key) or models.access(state).get(m.key)} for m in models.catalog()],
     })
 
 
 async def api_models_check(request: Request) -> Response:
+    fresh = {}
     for key in providers.PROVIDERS:   # each provider whose CLI is here
         if providers.installed(key):
-            await models.check_access(provider=key)
-    return await api_models(request)
+            fresh.update(await models.check_access(provider=key))
+    return await api_models(request, fresh)
 
 
 async def export(request: Request) -> Response:

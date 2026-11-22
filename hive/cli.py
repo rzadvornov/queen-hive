@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-import json
 import os
 import shutil
 import subprocess
@@ -56,16 +55,17 @@ def _job_args(parser: argparse.ArgumentParser) -> None:
                              "(Claude Code also limits the network). Codex always sandboxes them.")
 
 
-def _choose(args, goal: str = "", ask_folder: bool = False):
+def _choose(args, goal: str = "", ask_folder: bool = False, save: bool = True):
     """Resolve folders, Queen, workers and mode, asking only for what wasn't given.
 
     The provider comes first: --provider, else the provider of --queen, else the saved choice, asked once.
-    With ask_folder, the folder is asked when neither -d nor the goal names one."""
+    With ask_folder, the folder is asked when neither -d nor the goal names one. With save, the choices become
+    the next run's defaults: interactive runs only, so a script's flags don't change what `hive` offers you."""
     from hive import folders as folders_mod, init, ui
     from hive.models import choose_queen, choose_workers
     from hive.modes import DEFAULT_MODE, choose_mode
 
-    provider = providers.current(args.provider or (models.get(args.queen).provider if args.queen else None))
+    provider = providers.current(args.provider or (_model(args.queen, "--queen").provider if args.queen else None))
     if provider != "claude":
         providers.binary(provider)   # fail early, with how to install it
     named = args.dir or folders_mod.folders_in(goal)
@@ -89,17 +89,26 @@ def _choose(args, goal: str = "", ask_folder: bool = False):
         mode = args.mode or choose_mode(mode)
     if models.is_available(state, queen) is False:
         print(f"⚠️  {queen.name} was not available last time it was checked (`hive models --check` re-checks).")
-    models.remember(state, queen, workers)
-    state["last_mode"] = mode
-    memory.save_state(state)
+    if save:
+        models.remember(state, queen, workers)
+        state["last_mode"] = mode
+        memory.save_state(state)
     return folders, queen, workers, mode
+
+
+def _model(key: str, flag: str) -> models.Model:
+    """A model named on the command line, or a clear error instead of a traceback."""
+    try:
+        return models.get(key)
+    except KeyError:
+        raise SystemExit(f"{flag}: unknown model '{key}'. `hive models --all` lists the models.") from None
 
 
 def _of_provider(key: str | None, provider: str, flag: str) -> models.Model | None:
     """A model given on the command line, which must run in the provider's CLI."""
     if not key:
         return None
-    model = models.get(key)
+    model = _model(key, flag)
     if model.provider != provider and not (model.local and provider == "claude"):
         raise SystemExit(f"{flag} {model.key} is a {providers.PROVIDERS[model.provider].name} model, but this run uses "
                          f"{providers.PROVIDERS[provider].name}. Pick one of: "
@@ -133,7 +142,7 @@ def cmd_run(argv: list[str]) -> None:
         parser.error("a goal is required for a headless run (no terminal, or --headless)")
     if args.compare and not args.goal:
         parser.error("--compare needs a goal")
-    folders, queen, workers, mode = _choose(args, args.goal, ask_folder=not headless)
+    folders, queen, workers, mode = _choose(args, args.goal, ask_folder=not headless, save=not headless)
     if args.compare and queen.provider != "claude":
         raise SystemExit("--compare runs Claude models only for now.")
     roles = _roles(args, queen.provider)
@@ -172,7 +181,7 @@ def _compare_keys(value: str | None) -> list[str]:
     elif value == "all":
         keys = [m.key for m in models.queens()]
     else:
-        keys = [models.get(k).key for k in _split(value)]
+        keys = [_model(k, "--compare").key for k in _split(value)]
     available = [k for k in keys if models.is_available(state, models.get(k)) is not False]
     skipped = set(keys) - set(available)
     if skipped:
@@ -192,14 +201,14 @@ def _confirm(question: str) -> bool:
 
 def cmd_waggle(argv: list[str], prog: str) -> None:
     """A retro of the project's last run, in the provider's CLI."""
-    from hive import launch
+    from hive import launch, ui
     from hive.job import Job
 
     parser = argparse.ArgumentParser(prog=prog, description="Retro of the project's last run, with proposed rule and memory edits.")
     parser.add_argument("note", nargs="?", default="", help="what to focus the retro on (optional).")
     _job_args(parser)
     args = parser.parse_args(argv)
-    folders, queen, workers, mode = _choose(args, ask_folder=True)
+    folders, queen, workers, mode = _choose(args, ask_folder=True, save=ui.interactive())
     job = Job(goal=_waggle_prompt(args.note, queen.provider), folders=folders, queen=queen, workers=workers, mode=mode,
               review=args.review, lenses=_split(args.lenses), budget=args.budget, waggle=False,
               roles=_roles(args, queen.provider))
@@ -208,7 +217,7 @@ def cmd_waggle(argv: list[str], prog: str) -> None:
 
 def cmd_review(argv: list[str]) -> None:
     """An independent review of existing changes, in the provider's CLI."""
-    from hive import launch
+    from hive import launch, ui
     from hive.job import Job
 
     parser = argparse.ArgumentParser(prog="hive review", description="Independent review of changes by reviewer bees; builds nothing.")
@@ -216,7 +225,7 @@ def cmd_review(argv: list[str]) -> None:
                         help="what to review: nothing for uncommitted changes, a branch, a commit range, or a PR number/URL.")
     _job_args(parser)
     args = parser.parse_args(argv)
-    folders, queen, workers, mode = _choose(args, ask_folder=True)
+    folders, queen, workers, mode = _choose(args, ask_folder=True, save=ui.interactive())
     job = Job(goal=_skill_prompt("review", args.target, queen.provider), folders=folders, queen=queen, workers=workers,
               mode=mode, review=args.review, lenses=_split(args.lenses), budget=args.budget, waggle=False,
               roles=_roles(args, queen.provider))
@@ -262,10 +271,11 @@ def cmd_models(argv: list[str]) -> None:
     args = parser.parse_args(argv)
     provider = providers.current(args.provider, ask=False)
     shown = list(providers.PROVIDERS) if args.all else [provider]
+    fresh = {}   # this check's results, also those not saved (a sign-in failure keeps the last real result)
     if args.check:
         print("checking access…")
         for key in shown:
-            asyncio.run(models.check_access(provider=key))
+            fresh.update(asyncio.run(models.check_access(provider=key)))
     state = memory.load_state()
     for key in shown:
         p = providers.PROVIDERS[key]
@@ -273,10 +283,14 @@ def cmd_models(argv: list[str]) -> None:
         print(f"\n{p.name} ({p.product}) · last Queen: {queen.name} · {models.prices_note(key)}")
         print(f"{'model':22} {'id':24} {'in/out $/M':12} {'role':10} access")
         for m in models.catalog(key):
-            entry = models.access(state).get(m.key)
+            entry = fresh.get(m.key) or models.access(state).get(m.key)
             access = "not checked" if entry is None else "✅" if entry["ok"] else f"✗ {entry.get('error', '')[:50]}"
             role = "queen" if m.queen_effort else "local bees" if m.local else "bees"
             print(f"{m.key:22} {m.id:24} {f'{m.input:g}/{m.output:g}':12} {role:10} {access}")
+        signed_out = next((e["error"] for k, e in fresh.items() if not e["ok"] and models.SIGN_IN_ERRORS.search(e["error"])
+                           and models.find(k) and models.find(k).provider == key), None)
+        if signed_out:   # the table cuts errors short; this one says what to do
+            print(f"⚠️  {p.product} couldn't sign in, so these results say nothing about the models: {signed_out}")
     if not args.check:
         print("\nRun `hive models --check` to test access" + ("" if args.all else ", `--all` for every provider") + ".")
 
@@ -388,8 +402,21 @@ def cmd_doctor(argv: list[str]) -> None:
         if os.environ.get(leftover):
             print(f"⚠️  {leftover} is set and overrides per-bee settings")
     print(_transcript_check())
-    print(json.dumps(memory.load_state().get("access", {}), indent=1) if memory.load_state().get("access") else
-          "model access: not checked (run `hive models --check`)")
+    print(_access_summary())
+
+
+def _access_summary() -> str:
+    """One line per provider from the last `hive models --check`: how many models answered, and which didn't."""
+    access = models.access(memory.load_state())
+    lines = []
+    for key, p in providers.PROVIDERS.items():
+        checked = [m for m in models.catalog(key) if m.key in access]
+        if checked:
+            missing = [m.key for m in checked if not access[m.key]["ok"]]
+            lines.append(f"   {p.name}: {len(checked) - len(missing)} of {len(checked)} ✅"
+                         + (f" · no access: {', '.join(missing)}" if missing else ""))
+    return ("model access (last `hive models --check`):\n" + "\n".join(lines)) if lines else \
+        "model access: not checked (run `hive models --check`)"
 
 
 def _provider_check(key: str, chosen: bool) -> None:

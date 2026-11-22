@@ -281,6 +281,10 @@ async def _probe_local(model: Model) -> tuple[bool, str]:
     return True, ""
 
 
+SIGN_IN_ERRORS = re.compile(r"authenticat|IneligibleTier|api.?key|not logged in|log ?in|unauthori[sz]ed|credential|\b401\b",
+                            re.I)
+
+
 async def check_access(keys: list[str] | None = None, provider: str = "claude") -> dict[str, dict]:
     """Probe models concurrently and cache the result in ~/.hive/state.json."""
     bees = DEFAULTS[provider][1]
@@ -290,9 +294,11 @@ async def check_access(keys: list[str] | None = None, provider: str = "claude") 
     state = memory.load_state()
     now = int(time.time())
     for model, (ok, error) in zip(chosen, results):
+        if not ok and SIGN_IN_ERRORS.search(error) and model.key in access(state):
+            continue   # about your login, not the model: keep what the last real check found
         access(state)[model.key] = {"ok": ok, "error": error, "checked_at": now}
     memory.save_state(state)
-    return {m.key: access(state)[m.key] for m in chosen}
+    return {model.key: {"ok": ok, "error": error} for model, (ok, error) in zip(chosen, results)}
 
 
 def _menu(candidates: list[Model], state: dict) -> list[tuple[str, str, bool]]:

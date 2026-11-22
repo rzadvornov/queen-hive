@@ -190,7 +190,7 @@ review: lenses goal, correctness, tests, arch, perf, rules, security · confirme
 🐝 Hive $1.00 vs Claude Opus 5.5 alone $3.05 (estimate, same tokens) → saved 67%
 ```
 
-**Scripts and CI.** Without a terminal, or with `--headless`, the hive doesn't open the CLI's interface. It runs the goal in the CLI's print mode, prints the Queen's progress, stops at the end and prints the same report. A goal is required, there's no waggle, and with Claude `--budget` is a hard cap.
+**Scripts and CI.** Without a terminal, or with `--headless`, the hive doesn't open the CLI's interface. It runs the goal in the CLI's print mode, prints the Queen's progress, stops at the end and prints the same report. A goal is required, there's no waggle, and with Claude `--budget` is a hard cap. A headless run's `--queen`, `--workers` and `--mode` apply to that run only: only interactive runs change the defaults `hive` offers you.
 
 The hive never commits. Review the changes with `git diff` and commit them yourself.
 

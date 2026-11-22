@@ -156,15 +156,20 @@ def _message(error) -> str:
     return found[-1] if found else text
 
 
+SIGN_IN_HINT = " · set GEMINI_API_KEY (a key from Google AI Studio): Google doesn't serve the CLI to personal logins"
+
+
 def failure(stdout: str, stderr: str, code: int) -> str | None:
-    """Why a headless `gemini -p -o json` run failed, or None."""
+    """Why a headless `gemini -p -o json` run failed, or None; a sign-in failure says what to do."""
     error = _json(stdout).get("error") or _json(stderr).get("error")
     if error:
-        return _message(error)
-    if code:
+        message = _message(error)
+    elif code:
         lines = [line for line in (stderr or stdout).strip().splitlines() if line.strip()]
-        return next((line for line in lines if "Error" in line), lines[-1] if lines else f"exit code {code}")
-    return None
+        message = next((line for line in lines if "Error" in line), lines[-1] if lines else f"exit code {code}")
+    else:
+        return None
+    return message + (SIGN_IN_HINT if re.search(r"IneligibleTier|authenticat|API key", message, re.I) else "")
 
 
 def probe(model) -> tuple[bool, str]:
@@ -178,7 +183,9 @@ def probe(model) -> tuple[bool, str]:
     except subprocess.TimeoutExpired:
         return False, "timed out"
     error = failure(done.stdout, done.stderr, done.returncode)
-    return (False, error[:200]) if error else (True, "")
+    if error and SIGN_IN_HINT in error:   # keep the hint when the message is cut
+        error = error.replace(SIGN_IN_HINT, "")[:200 - len(SIGN_IN_HINT)] + SIGN_IN_HINT
+    return (False, error[:300]) if error else (True, "")
 
 
 # --- chat records: the Gemini CLI's session logs --------------------------------

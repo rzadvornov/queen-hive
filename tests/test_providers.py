@@ -483,6 +483,56 @@ def test_icons_are_not_doubled_in_the_log():
     assert format_event({"kind": "report", "label": "B2", "ok": True, "text": "🐝 B2\n- Changed: a.py"}) == "   🐝 B2 📨 - Changed: a.py"
 
 
+def test_unknown_model_is_a_clear_error(tmp_path, fake_bin):
+    from hive import cli
+
+    fake_bin("codex", "")
+    with pytest.raises(SystemExit, match="--queen: unknown model 'gpt-9'"):
+        cli.cmd_run(["x", "--headless", "--queen", "gpt-9", "-d", str(tmp_path), "--no-init"])
+    with pytest.raises(SystemExit, match="--workers: unknown model 'nope'"):
+        cli.cmd_run(["x", "--headless", "--provider", "gpt", "--workers", "nope", "-d", str(tmp_path), "--no-init"])
+
+
+def test_scripts_dont_change_your_defaults(tmp_path, fake_bin, monkeypatch):
+    """A headless run's flags apply to that run only; an interactive choice becomes the default."""
+    import argparse
+
+    from hive import cli
+
+    fake_bin("codex", "")
+    args = argparse.Namespace(dir=[tmp_path], no_init=True, queen="gpt-5.4", workers="gpt-5.4-mini", mode="ask",
+                              provider=None)
+    cli._choose(args, save=False)
+    state = memory.load_state()
+    assert "gpt" not in state.get("by_provider", {}) and "last_mode" not in state
+    cli._choose(args, save=True)
+    assert memory.load_state()["by_provider"]["gpt"] == {"queen": "gpt-5.4", "workers": "gpt-5.4-mini"}
+
+
+def test_sign_in_failures_keep_the_last_access_result(monkeypatch):
+    import asyncio
+
+    state = memory.load_state()
+    models.access(state)["gemini-3.1-pro"] = {"ok": True, "error": "", "checked_at": 1}
+    memory.save_state(state)
+    async def signed_out(model):
+        return False, "Error authenticating: IneligibleTierError"
+
+    monkeypatch.setattr(models, "probe", signed_out)
+    fresh = asyncio.run(models.check_access(["gemini-3.1-pro", "gemini-3-flash"], provider="gemini"))
+    assert fresh["gemini-3.1-pro"]["ok"] is False                       # shown as failing now …
+    saved = models.access(memory.load_state())
+    assert saved["gemini-3.1-pro"]["ok"] is True                        # … but the model isn't marked unavailable
+    assert saved["gemini-3-flash"]["ok"] is False                       # nothing known before: recorded
+
+
+def test_gemini_sign_in_errors_say_what_to_do():
+    from hive import gemini
+
+    stderr = 'log line\n{"error": {"message": "Error authenticating: IneligibleTierError: This client is not eligible"}}'
+    assert "set GEMINI_API_KEY" in gemini.failure("", stderr, 41)
+
+
 def test_models_from_the_codex_account(hive_home, monkeypatch):
     """A ChatGPT plan offers its own models: they join the catalog and become the defaults."""
     from hive import models

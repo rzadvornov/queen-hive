@@ -51,7 +51,7 @@ issue and the visible tests; hidden and regression tests were run afterwards. "h
 
 Each cell: hidden tests passed · regressions · cost · time.
 
-| Task | hive | Claude Sonnet 5.5 alone | Claude Opus 5.5 alone | hive sonnet |
+| Task | Hive | Claude Sonnet 5.5 alone | Claude Opus 5.5 alone | Hive sonnet |
 |---|---|---|---|---|
 | invoices | 100% · 0 · $0.32 · 4.4m | 100% · 0 · $0.11 · 0.5m | 100% · 0 · $0.52 · 2.6m | 100% · 0 · $0.12 · 3.4m |
 | ledger | 100% · 0 · $0.14 · 1.3m | 100% · 0 · $0.05 · 0.2m | 100% · 0 · $0.18 · 0.6m | 100% · 0 · $0.06 · 1.0m |

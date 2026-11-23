@@ -4,7 +4,7 @@
 
 A Queen model breaks your goal into small briefs and sends cheap **worker bees** to build, scout and review. She re-runs every check herself, an independent review runs before anything is called done, hooks enforce what agents may not touch, and every job leaves a record of what was done, how it was verified and what it cost.
 
-Compared like for like, a hive with an Opus 5.5 Queen costs about 30% less than Opus 5.5 alone on [our benchmarks](#benchmarks), with the same results, because the Queen coordinates while cheap bees do the reading and writing. With a Sonnet 5.5 Queen it still costs more than Sonnet 5.5 alone; that's the next target.
+Compared like for like, a hive with an Opus 5.5 Queen costs about 30% less than Opus 5.5 alone on [our benchmarks](#benchmarks), with the same results, because the Queen coordinates while cheap bees do the reading and writing. With a Sonnet 5.5 Queen it gets the same results as Sonnet 5.5 alone but still costs about 45% more: on tasks this small, the Queen's fixed overhead weighs as much as the whole task.
 
 ![A Queen Hive run: the Queen sends a builder and reviewers, checks their work and reports the cost](https://raw.githubusercontent.com/rzadvornov/queen-hive/main/docs/media/demo.gif)
 
@@ -71,10 +71,19 @@ Compared like for like, the hive's Queen against the same model alone:
 | 2. Queen effort capped at `high`; no automatic second review round; 4-line reviewer briefs | $2.94 | $2.66 |
 | 3. Review sized to the change; headless runs without your personal setup | **$2.05** | $2.90 |
 
-With a Sonnet 5.5 Queen (and the light review), only benchmark 2 has the pair so far: $0.52 for the hive against
-$0.32 for Sonnet 5.5 alone, still about 60% more. Making the Sonnet-Queen hive cheaper than Sonnet alone is the next target.
+With a Sonnet 5.5 Queen, measured the same way on all nine tasks against Sonnet 5.5 alone:
 
-Every variant passed every task in every round, so these tasks show cost, not quality: on self-contained work of this
+| | Hive with a Sonnet 5.5 Queen, 9 tasks | Sonnet 5.5 alone |
+|---|---|---|
+| Full review | 8/9 correct · $1.07 | 9/9 · $0.67 |
+| Light review by default, a lighter rule set, the request passed to bees word for word | **9/9 correct · $0.97** | 9/9 · $0.67 |
+
+The miss in the first row taught a lesson: the Queen, who no longer reads the code, had narrowed "the rates in
+rates.json" to the currencies the issue named. Briefs now carry the user's request word for word and point to sources
+instead of restating them. The Sonnet-Queen hive is still about 45% dearer than Sonnet alone: a Queen needs a few turns
+of her own (brief, check, review, summary), which on tasks this small cost as much as Sonnet doing the whole task.
+
+Apart from that one miss, every variant passed every task in every round, so these tasks show cost, not quality: on self-contained work of this
 size the hive's checks and review didn't change a result. Each figure is one run per task, and single runs vary
 (Opus alone cost $0.33–0.59 on the same task across rounds). Costs are the API-equivalent price on a Claude
 subscription.
@@ -228,7 +237,7 @@ Your own `~/.codex` and `~/.gemini` are never edited. GPT and Gemini prices come
 - **👑 and 🐝 in the chat:** on every provider the Queen starts her messages with 👑 and names bees with their icon (🔎 scout, 🔨 builder, 🧐 reviewer), and bees start their reports with `🐝 <brief ID>`. The Gemini CLI shows bees as "🔎 Scout bee" and so on; Codex as "Scout bee" (it allows no emoji in names).
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
 - **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
-- **Independent review:** reviewer bees check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security), or only goal and tests with `--review light`. They don't see the builders' reports. `hive review` runs the same review on any diff, branch or PR.
+- **Independent review:** reviewer bees check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security), or only goal and tests with `--review light` (the default for a Sonnet 5.5 Queen). They don't see the builders' reports. `hive review` runs the same review on any diff, branch or PR.
 - **Protected paths:** for example your acceptance tests. A hook blocks file edits to them, and shell writes as far as a parse of the command can tell.
 - **Memory outside your project:** kept in `~/.hive/projects/…`. After each job, a retro (`waggle`) proposes rule fixes and applies only those you approve. Skip it with `--no-waggle`.
 - **Statistics:** tokens and cost per stage. Each job is compared with single models, either estimated or, with `--compare` (Claude only for now), as real side-by-side runs.

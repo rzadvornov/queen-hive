@@ -72,7 +72,7 @@ def plugin_for(bees: dict[str, models.Model]) -> Path:
 
 
 def queen_prompt(job: Job, pdir: Path, start: StartPoint | None) -> str:
-    rules = portable.rules_for(job.provider)
+    rules = portable.rules_for(job.provider, job.review)
     target, others = job.folders[0], job.folders[1:]
     parts = [
         rules,

@@ -30,6 +30,7 @@ class Model:
     base_url: str | None = None       # local models: their own Anthropic-compatible server, e.g. Ollama
     provider: str = "claude"          # claude | gpt | gemini: the CLI that runs it
     priced_on: str = PRICES_AS_OF     # when its price was last checked
+    review: str = "full"              # its default review level as Queen
 
     @property
     def local(self) -> bool:
@@ -44,7 +45,8 @@ CATALOG: tuple[Model, ...] = (
     Model("fable-5.1", "claude-fable-5-1", "Claude Fable 5.1", 10.0, 50.0, 0.25, "xhigh", "most capable"),
     Model("mythos-5.1", "claude-mythos-5-1", "Claude Mythos 5.1", 10.0, 50.0, 1.0, "xhigh", "Project Glasswing only"),
     Model("opus-5.5", "claude-opus-5-5", "Claude Opus 5.5", 4.0, 20.0, 0.20, "xhigh", "default Queen"),
-    Model("sonnet-5.5", "claude-sonnet-5-5", "Claude Sonnet 5.5", 2.0, 10.0, 0.20, "high", "fast and cheap"),
+    Model("sonnet-5.5", "claude-sonnet-5-5", "Claude Sonnet 5.5", 2.0, 10.0, 0.20, "high", "fast and cheap",
+          review="light"),   # the benchmarks: a full review cost a Sonnet hive more than Sonnet alone for no change
     Model("opus-5", "claude-opus-5", "Claude Opus 5", 5.0, 25.0, 0.50, "xhigh"),
     Model("opus-4.8", "claude-opus-4-8", "Claude Opus 4.8", 5.0, 25.0, 0.50, "xhigh"),
     Model("haiku-5.5", "claude-haiku-5-5", "Claude Haiku 5.5", 0.10, 0.50, 0.01, None, "worker bees"),

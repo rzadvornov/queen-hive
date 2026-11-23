@@ -44,7 +44,8 @@ def _job_args(parser: argparse.ArgumentParser) -> None:
     for bee in ("scout", "builder", "reviewer"):
         parser.add_argument(f"--{bee}", metavar="MODEL", help=f"model for the {bee} bees only, e.g. a local model "
                                                               "from `hive models add` (default: the bee model).")
-    parser.add_argument("--review", choices=["full", "light", "off"], default="full", help="independent review level (default full).")
+    parser.add_argument("--review", choices=["full", "light", "off"],
+                        help="independent review level. Default: the Queen's own, full for most, light for Sonnet 5.5.")
     parser.add_argument("--lenses", help="comma-separated review lenses, e.g. goal,correctness,tests,arch,perf,rules,security")
     parser.add_argument("--budget", type=float, default=5.0,
                         help="hard spending cap in USD per headless run and per --compare run (default 5; Claude only).")
@@ -156,7 +157,7 @@ def cmd_run(argv: list[str]) -> None:
         print(f"⚖️  comparison: {', '.join(models.get(k).name for k in compare)} will each redo the job alone ({cap}).")
         if not args.yes and not _confirm("   run the comparison?"):
             compare = []
-    job = Job(goal=args.goal, folders=folders, queen=queen, workers=workers, mode=mode, review=args.review,
+    job = Job(goal=args.goal, folders=folders, queen=queen, workers=workers, mode=mode, review=args.review or queen.review,
               lenses=_split(args.lenses), done=args.done, budget=args.budget, compare=compare,
               waggle=not args.no_waggle and not headless, sandbox=args.sandbox, roles=roles)
     records = launch.run(job, headless=headless)
@@ -210,7 +211,7 @@ def cmd_waggle(argv: list[str], prog: str) -> None:
     args = parser.parse_args(argv)
     folders, queen, workers, mode = _choose(args, ask_folder=True, save=ui.interactive())
     job = Job(goal=_waggle_prompt(args.note, queen.provider), folders=folders, queen=queen, workers=workers, mode=mode,
-              review=args.review, lenses=_split(args.lenses), budget=args.budget, waggle=False,
+              review=args.review or queen.review, lenses=_split(args.lenses), budget=args.budget, waggle=False,
               roles=_roles(args, queen.provider))
     launch.run(job)
 
@@ -227,7 +228,7 @@ def cmd_review(argv: list[str]) -> None:
     args = parser.parse_args(argv)
     folders, queen, workers, mode = _choose(args, ask_folder=True, save=ui.interactive())
     job = Job(goal=_skill_prompt("review", args.target, queen.provider), folders=folders, queen=queen, workers=workers,
-              mode=mode, review=args.review, lenses=_split(args.lenses), budget=args.budget, waggle=False,
+              mode=mode, review=args.review or queen.review, lenses=_split(args.lenses), budget=args.budget, waggle=False,
               roles=_roles(args, queen.provider))
     launch.run(job)
 

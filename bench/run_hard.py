@@ -30,7 +30,7 @@ BUDGET, LIMIT = "8", 3600   # USD per run; seconds for one hive run including it
 SOLO = "sonnet-5.5,opus-5.5"
 VARIANTS = {"hive": ["--queen", "opus-5.5", "--review", "full", "--compare", SOLO, "--yes"],
             "hive light": ["--queen", "sonnet-5.5", "--review", "light"],
-            "hive sonnet": ["--queen", "sonnet-5.5", "--review", "full", "--compare", "sonnet-5.5", "--yes"]}
+            "hive sonnet": ["--queen", "sonnet-5.5", "--compare", "sonnet-5.5", "--yes"]}   # its default review
 DEFAULT_VARIANTS = ("hive", "hive light")   # --variants "hive sonnet" runs others
 
 os.environ["HIVE_HOME"] = str(HOME / "home")

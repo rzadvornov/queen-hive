@@ -645,6 +645,31 @@ def test_queen_effort_is_capped_but_a_model_alone_keeps_its_own():
     assert models.coordinating_effort(models.get("sonnet-5.5")) == "high"
 
 
+def test_lighter_rules_without_a_full_review():
+    from hive import portable
+
+    full, light = portable.rules_for("claude", "full"), portable.rules_for("claude", "light")
+    assert "full-review -->" not in full and "full-review -->" not in light        # markers never reach the Queen
+    assert "**Medium:**" in full and "`arch`" in full and "second review round" in full
+    assert "**Medium:**" not in light and "`arch`" not in light and "second review round" not in light
+    assert "R-goal+tests" in light and len(light) < len(full) - 800
+    assert "word for word" in light and "Never narrow the request" in light      # briefs carry the request as asked
+    assert "**Medium:**" not in portable.rules_for("gpt", "light")
+
+
+def test_a_sonnet_queen_defaults_to_the_light_review(tmp_path, monkeypatch):
+    from hive import cli, launch
+
+    seen = []
+    monkeypatch.setattr(launch, "run", lambda job, headless=False: seen.append(job.review) or [])
+    for argv, expected in ((["--queen", "sonnet-5.5"], "light"), (["--queen", "opus-5.5"], "full"),
+                           (["--queen", "sonnet-5.5", "--review", "full"], "full")):
+        with pytest.raises(SystemExit):
+            cli.cmd_run(["x", "--headless", "--provider", "claude", "-d", str(tmp_path), "--no-init",
+                         "--workers", "haiku-5.5", "--mode", "auto", *argv])
+        assert seen[-1] == expected, argv
+
+
 def test_models_from_the_codex_account(hive_home, monkeypatch):
     """A ChatGPT plan offers its own models: they join the catalog and become the defaults."""
     from hive import models

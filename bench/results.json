@@ -4,20 +4,21 @@
     "kind": "bug fix",
     "hive": {
       "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.22730195499999997,
+      "cost_usd": 0.21764796499999997,
       "passed": true,
-      "duration_ms": 84131,
+      "duration_ms": 70544,
       "briefs": 3,
       "returns": 0,
       "review": {
         "lenses": [
           "goal",
           "correctness",
-          "tests"
+          "tests",
+          "security"
         ],
         "rounds": 1,
-        "confirmed": 4,
-        "fixed": 4,
+        "confirmed": 2,
+        "fixed": 2,
         "dismissed": 0,
         "suggestions": [],
         "open": []
@@ -26,16 +27,16 @@
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.08051520000000001,
+        "cost_usd": 0.0593528,
         "passed": true,
-        "duration_ms": 15389,
+        "duration_ms": 15929,
         "error": null
       },
       {
         "name": "Claude Opus 5.5",
-        "cost_usd": 0.21835500000000002,
+        "cost_usd": 0.19723600000000002,
         "passed": true,
-        "duration_ms": 38884,
+        "duration_ms": 30714,
         "error": null
       }
     ]
@@ -45,9 +46,9 @@
     "kind": "feature",
     "hive": {
       "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.21930658500000003,
+      "cost_usd": 0.14440873499999998,
       "passed": true,
-      "duration_ms": 150345,
+      "duration_ms": 50136,
       "briefs": 2,
       "returns": 0,
       "review": {
@@ -60,28 +61,28 @@
         "rounds": 1,
         "confirmed": 0,
         "fixed": 0,
-        "dismissed": 4,
+        "dismissed": 1,
         "suggestions": [
-          "Validate quantities in Cart.add() (inf/NaN/negative), pending product-owner approval"
+          "Add Cart.total() tests for an empty cart and for carts with only unaffected items"
         ],
         "open": [
-          "Odd-price half-price rounding (price // 2) not yet confirmed by product owner"
+          "Odd-price half-price rounding (customer pays price // 2) not yet confirmed by product owner"
         ]
       }
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.047469000000000004,
+        "cost_usd": 0.0478698,
         "passed": true,
-        "duration_ms": 12816,
+        "duration_ms": 13018,
         "error": null
       },
       {
         "name": "Claude Opus 5.5",
-        "cost_usd": 0.1771496,
+        "cost_usd": 0.154817,
         "passed": true,
-        "duration_ms": 43781,
+        "duration_ms": 31184,
         "error": null
       }
     ]
@@ -91,9 +92,96 @@
     "kind": "multi-file feature",
     "hive": {
       "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.21214378000000003,
+      "cost_usd": 0.14154792500000002,
       "passed": true,
-      "duration_ms": 97253,
+      "duration_ms": 66518,
+      "briefs": 2,
+      "returns": 0,
+      "review": {
+        "lenses": [
+          "goal",
+          "correctness",
+          "tests"
+        ],
+        "rounds": 1,
+        "confirmed": 0,
+        "fixed": 0,
+        "dismissed": 2,
+        "suggestions": [
+          "add empty-inventory export test (CSV header only, JSON [])",
+          "file I/O uses locale encoding (consistent with store)"
+        ],
+        "open": [
+          "NaN price exports as bare NaN in JSON (known issue)"
+        ]
+      }
+    },
+    "solo": [
+      {
+        "name": "Claude Sonnet 5.5",
+        "cost_usd": 0.056180900000000006,
+        "passed": true,
+        "duration_ms": 15705,
+        "error": null
+      },
+      {
+        "name": "Claude Opus 5.5",
+        "cost_usd": 0.24488640000000003,
+        "passed": true,
+        "duration_ms": 54255,
+        "error": null
+      }
+    ]
+  },
+  {
+    "task": "reports",
+    "kind": "feature + refactor",
+    "hive": {
+      "name": "Claude Opus 5.5 + Claude Haiku 5.5",
+      "cost_usd": 0.21929571500000006,
+      "passed": true,
+      "duration_ms": 132181,
+      "briefs": 2,
+      "returns": 0,
+      "review": {
+        "lenses": [
+          "goal",
+          "correctness",
+          "tests"
+        ],
+        "rounds": 1,
+        "confirmed": 3,
+        "fixed": 3,
+        "dismissed": 0,
+        "suggestions": [],
+        "open": []
+      }
+    },
+    "solo": [
+      {
+        "name": "Claude Sonnet 5.5",
+        "cost_usd": 0.0656383,
+        "passed": true,
+        "duration_ms": 18150,
+        "error": null
+      },
+      {
+        "name": "Claude Opus 5.5",
+        "cost_usd": 0.351907,
+        "passed": true,
+        "duration_ms": 79678,
+        "error": null
+      }
+    ]
+  },
+  {
+    "task": "ttlcache",
+    "kind": "implement from spec",
+    "hive": {
+      "name": "Claude Opus 5.5 + Claude Haiku 5.5",
+      "cost_usd": 0.17172102,
+      "passed": true,
+      "duration_ms": 84839,
       "briefs": 3,
       "returns": 0,
       "review": {
@@ -109,58 +197,11 @@
         "rounds": 1,
         "confirmed": 0,
         "fixed": 0,
-        "dismissed": 4,
+        "dismissed": 3,
         "suggestions": [
-          "Refuse --out that resolves to the store file",
-          "CSV formula-injection escaping",
-          "Explicit json branch in _write_export"
-        ],
-        "open": [
-          "add accepts NaN price, so JSON export emits bare NaN",
-          "CSV to stdout may give \\r\\r\\n on Windows"
-        ]
-      }
-    },
-    "solo": [
-      {
-        "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.0586503,
-        "passed": true,
-        "duration_ms": 17249,
-        "error": null
-      },
-      {
-        "name": "Claude Opus 5.5",
-        "cost_usd": 0.247379,
-        "passed": true,
-        "duration_ms": 62063,
-        "error": null
-      }
-    ]
-  },
-  {
-    "task": "reports",
-    "kind": "feature + refactor",
-    "hive": {
-      "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.16916014499999998,
-      "passed": true,
-      "duration_ms": 110551,
-      "briefs": 1,
-      "returns": 0,
-      "review": {
-        "lenses": [
-          "goal",
-          "correctness",
-          "tests"
-        ],
-        "rounds": 1,
-        "confirmed": 0,
-        "fixed": 0,
-        "dismissed": 0,
-        "suggestions": [
-          "Escape Markdown emphasis characters in region names/title",
-          "Add a markdown test pinning tie order for equal revenue"
+          "test expired MRU entry alongside live LRU before eviction",
+          "use a fake clock in test_default_cache_size_is_1024",
+          "ProfileService exposes cache as a public attribute; shared injected cache shares keyspace"
         ],
         "open": []
       }
@@ -168,45 +209,16 @@
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.0551464,
+        "cost_usd": 0.070802,
         "passed": true,
-        "duration_ms": 14069,
+        "duration_ms": 19963,
         "error": null
       },
       {
         "name": "Claude Opus 5.5",
-        "cost_usd": 0.2974466,
+        "cost_usd": 0.3559624,
         "passed": true,
-        "duration_ms": 75933,
-        "error": null
-      }
-    ]
-  },
-  {
-    "task": "ttlcache",
-    "kind": "implement from spec",
-    "hive": {
-      "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.19285801999999996,
-      "passed": true,
-      "duration_ms": 56398,
-      "briefs": 3,
-      "returns": 0,
-      "review": null
-    },
-    "solo": [
-      {
-        "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.10796829999999999,
-        "passed": true,
-        "duration_ms": 31082,
-        "error": null
-      },
-      {
-        "name": "Claude Opus 5.5",
-        "cost_usd": 0.5875324,
-        "passed": true,
-        "duration_ms": 108383,
+        "duration_ms": 91119,
         "error": null
       }
     ]

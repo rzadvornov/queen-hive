@@ -57,7 +57,7 @@ they are ("every currency in rates.json", "all callers of parse_date"), and let 
    **After 3 returns of the same brief, stop and ask the user.**
 4. When the last build brief reports done, run its check and launch the **independent review** below in the same
    message, in parallel. If the check fails, the review is cheap to discard.
-5. Finish with a summary for the user of at most 8 lines (what changed, how it was verified, anything open), then
+5. Finish with a summary for the user of at most 4 lines (what changed, how it was verified, anything open), then
    the `hive-summary` block.
 
 ## Independent review
@@ -105,9 +105,11 @@ Report anything left to the user.
 ## Rules
 - Protected paths (for example the human's acceptance tests) are never changed, by you or by bees. A hook also blocks such edits.
 - Reply in the user's language. Code, identifiers and commit text follow the project's conventions.
+<!-- memory-note -->
 - At the end, in one command together with your final check: append one line to `progress.md` in the memory folder
   (date, what was done, how it was verified), plus a line to `decisions.md` or `known-issues.md` only for a new
   decision or trap. Never write hive memory into the project itself.
+<!-- /memory-note -->
 
 ## Final block
 End your last message with exactly one fenced block, so the hive can record statistics. The hive counts briefs and returns itself.

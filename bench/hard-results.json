@@ -1,40 +1,6 @@
 [
   {
     "task": "invoices",
-    "variant": "hive",
-    "cost_usd": 0.38544560000000005,
-    "duration_ms": 319172,
-    "error": null,
-    "hidden": {
-      "run": 7,
-      "passed": 7,
-      "failed": []
-    },
-    "regression": {
-      "run": 2,
-      "passed": 2,
-      "failed": []
-    }
-  },
-  {
-    "task": "invoices",
-    "variant": "Claude Opus 5.5 alone",
-    "cost_usd": 0.5375458,
-    "duration_ms": 149771,
-    "error": null,
-    "hidden": {
-      "run": 7,
-      "passed": 7,
-      "failed": []
-    },
-    "regression": {
-      "run": 2,
-      "passed": 2,
-      "failed": []
-    }
-  },
-  {
-    "task": "invoices",
     "variant": "hive light",
     "cost_usd": 0.15838669,
     "duration_ms": 151297,
@@ -47,40 +13,6 @@
     "regression": {
       "run": 2,
       "passed": 2,
-      "failed": []
-    }
-  },
-  {
-    "task": "ledger",
-    "variant": "hive",
-    "cost_usd": 0.20898402499999996,
-    "duration_ms": 75365,
-    "error": null,
-    "hidden": {
-      "run": 7,
-      "passed": 7,
-      "failed": []
-    },
-    "regression": {
-      "run": 5,
-      "passed": 5,
-      "failed": []
-    }
-  },
-  {
-    "task": "ledger",
-    "variant": "Claude Opus 5.5 alone",
-    "cost_usd": 0.18603419999999998,
-    "duration_ms": 48120,
-    "error": null,
-    "hidden": {
-      "run": 7,
-      "passed": 7,
-      "failed": []
-    },
-    "regression": {
-      "run": 5,
-      "passed": 5,
       "failed": []
     }
   },
@@ -103,40 +35,6 @@
   },
   {
     "task": "report",
-    "variant": "hive",
-    "cost_usd": 0.2203130649999999,
-    "duration_ms": 166398,
-    "error": null,
-    "hidden": {
-      "run": 5,
-      "passed": 5,
-      "failed": []
-    },
-    "regression": {
-      "run": 4,
-      "passed": 4,
-      "failed": []
-    }
-  },
-  {
-    "task": "report",
-    "variant": "Claude Opus 5.5 alone",
-    "cost_usd": 0.38920959999999993,
-    "duration_ms": 276331,
-    "error": null,
-    "hidden": {
-      "run": 5,
-      "passed": 5,
-      "failed": []
-    },
-    "regression": {
-      "run": 4,
-      "passed": 4,
-      "failed": []
-    }
-  },
-  {
-    "task": "report",
     "variant": "hive light",
     "cost_usd": 0.18208846499999995,
     "duration_ms": 634986,
@@ -149,40 +47,6 @@
     "regression": {
       "run": 4,
       "passed": 4,
-      "failed": []
-    }
-  },
-  {
-    "task": "uploads",
-    "variant": "hive",
-    "cost_usd": 0.211534655,
-    "duration_ms": 80008,
-    "error": null,
-    "hidden": {
-      "run": 6,
-      "passed": 6,
-      "failed": []
-    },
-    "regression": {
-      "run": 5,
-      "passed": 5,
-      "failed": []
-    }
-  },
-  {
-    "task": "uploads",
-    "variant": "Claude Opus 5.5 alone",
-    "cost_usd": 0.2601752,
-    "duration_ms": 64040,
-    "error": null,
-    "hidden": {
-      "run": 6,
-      "passed": 6,
-      "failed": []
-    },
-    "regression": {
-      "run": 5,
-      "passed": 5,
       "failed": []
     }
   },
@@ -206,8 +70,76 @@
   {
     "task": "invoices",
     "variant": "hive sonnet",
-    "cost_usd": 0.100167255,
-    "duration_ms": 148718,
+    "cost_usd": 0.12369961999999997,
+    "duration_ms": 201875,
+    "error": null,
+    "hidden": {
+      "run": 7,
+      "passed": 7,
+      "failed": []
+    },
+    "regression": {
+      "run": 2,
+      "passed": 2,
+      "failed": []
+    }
+  },
+  {
+    "task": "ledger",
+    "variant": "hive sonnet",
+    "cost_usd": 0.06313396,
+    "duration_ms": 59978,
+    "error": null,
+    "hidden": {
+      "run": 7,
+      "passed": 7,
+      "failed": []
+    },
+    "regression": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    }
+  },
+  {
+    "task": "report",
+    "variant": "hive sonnet",
+    "cost_usd": 0.15167967000000007,
+    "duration_ms": 522179,
+    "error": null,
+    "hidden": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    },
+    "regression": {
+      "run": 4,
+      "passed": 4,
+      "failed": []
+    }
+  },
+  {
+    "task": "uploads",
+    "variant": "hive sonnet",
+    "cost_usd": 0.07348727,
+    "duration_ms": 99230,
+    "error": null,
+    "hidden": {
+      "run": 6,
+      "passed": 6,
+      "failed": []
+    },
+    "regression": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    }
+  },
+  {
+    "task": "invoices",
+    "variant": "hive",
+    "cost_usd": 0.32426070500000004,
+    "duration_ms": 263478,
     "error": null,
     "hidden": {
       "run": 7,
@@ -223,8 +155,25 @@
   {
     "task": "invoices",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.10977790000000001,
-    "duration_ms": 37771,
+    "cost_usd": 0.1056834,
+    "duration_ms": 29757,
+    "error": null,
+    "hidden": {
+      "run": 7,
+      "passed": 7,
+      "failed": []
+    },
+    "regression": {
+      "run": 2,
+      "passed": 2,
+      "failed": []
+    }
+  },
+  {
+    "task": "invoices",
+    "variant": "Claude Opus 5.5 alone",
+    "cost_usd": 0.5185738,
+    "duration_ms": 153936,
     "error": null,
     "hidden": {
       "run": 7,
@@ -239,9 +188,9 @@
   },
   {
     "task": "ledger",
-    "variant": "hive sonnet",
-    "cost_usd": 0.071235995,
-    "duration_ms": 54839,
+    "variant": "hive",
+    "cost_usd": 0.13963137,
+    "duration_ms": 79184,
     "error": null,
     "hidden": {
       "run": 7,
@@ -257,8 +206,25 @@
   {
     "task": "ledger",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.044702,
-    "duration_ms": 11260,
+    "cost_usd": 0.0490364,
+    "duration_ms": 13312,
+    "error": null,
+    "hidden": {
+      "run": 7,
+      "passed": 7,
+      "failed": []
+    },
+    "regression": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    }
+  },
+  {
+    "task": "ledger",
+    "variant": "Claude Opus 5.5 alone",
+    "cost_usd": 0.18009280000000003,
+    "duration_ms": 38596,
     "error": null,
     "hidden": {
       "run": 7,
@@ -273,9 +239,9 @@
   },
   {
     "task": "report",
-    "variant": "hive sonnet",
-    "cost_usd": 0.09050736499999996,
-    "duration_ms": 354934,
+    "variant": "hive",
+    "cost_usd": 0.13554569499999997,
+    "duration_ms": 93957,
     "error": null,
     "hidden": {
       "run": 5,
@@ -291,8 +257,25 @@
   {
     "task": "report",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.07532929999999999,
-    "duration_ms": 26143,
+    "cost_usd": 0.0454644,
+    "duration_ms": 27921,
+    "error": null,
+    "hidden": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    },
+    "regression": {
+      "run": 4,
+      "passed": 4,
+      "failed": []
+    }
+  },
+  {
+    "task": "report",
+    "variant": "Claude Opus 5.5 alone",
+    "cost_usd": 0.6270182,
+    "duration_ms": 14546,
     "error": null,
     "hidden": {
       "run": 5,
@@ -307,9 +290,9 @@
   },
   {
     "task": "uploads",
-    "variant": "hive sonnet",
-    "cost_usd": 0.07381251000000001,
-    "duration_ms": 242869,
+    "variant": "hive",
+    "cost_usd": 0.12537887499999997,
+    "duration_ms": 54153,
     "error": null,
     "hidden": {
       "run": 6,
@@ -325,8 +308,25 @@
   {
     "task": "uploads",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.058365200000000006,
-    "duration_ms": 18491,
+    "cost_usd": 0.05866210000000001,
+    "duration_ms": 19367,
+    "error": null,
+    "hidden": {
+      "run": 6,
+      "passed": 6,
+      "failed": []
+    },
+    "regression": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    }
+  },
+  {
+    "task": "uploads",
+    "variant": "Claude Opus 5.5 alone",
+    "cost_usd": 0.1658338,
+    "duration_ms": 38568,
     "error": null,
     "hidden": {
       "run": 6,

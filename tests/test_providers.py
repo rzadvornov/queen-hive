@@ -658,6 +658,22 @@ def test_lighter_rules_without_a_full_review():
     assert "run_in_background: false" in full and "run_in_background" not in portable.rules_for("gpt")  # Claude's Agent tool only
 
 
+
+def test_the_hive_writes_the_progress_line(tmp_path):
+    from hive import records
+
+    rules = portable.rules_for("claude", "light")
+    assert "memory-note -->" not in rules and "The hive writes the `progress.md` line" in rules
+    assert "append one line to `progress.md`" not in rules     # no closing turn for it
+    assert "append one line to `progress.md`" in (portable.CORE_DIR / "rules" / "queen.md").read_text()   # the plugin's Queen
+    (tmp_path / "progress.md").write_text("# Progress")
+    record = {"answer": "👑 Added the markdown renderer.\nMore.", "goal": "add markdown", "status": "done",
+              "acceptance": {"results": [{"command": "make test", "ok": True}]},
+              "summary": {"review": {"lenses": ["goal", "tests"], "rounds": 1, "fixed": 0}}}
+    records.note_progress(tmp_path, record)
+    line = (tmp_path / "progress.md").read_text().splitlines()[-1]
+    assert line.endswith("· Added the markdown renderer. · `make test` OK; review goal+tests, 1 round(s), 0 fixed")
+
 def test_a_sonnet_queen_defaults_to_the_light_review(tmp_path, monkeypatch):
     from hive import cli, launch
 

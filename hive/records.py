@@ -95,6 +95,7 @@ def finish(job: Job, pdir: Path, run_dir: Path, start, session_id: str, workspac
         record = build_record(dataclasses.replace(job, goal=goal), pdir, job_dir, trace.tracker.started, start,
                               trace.tracker, cmds, results, compared, trace.summary)
         stats.save(record, job_dir)
+        note_progress(pdir, record)
         log.emit("run_end", status=record["status"], cost_usd=record["hive"]["cost_usd"],
                  passed=record["acceptance"]["passed"], record=record["path"])
         stats.print_report(record)
@@ -102,6 +103,24 @@ def finish(job: Job, pdir: Path, run_dir: Path, start, session_id: str, workspac
     if exact and len(traces) > 1:
         print(f"🐝 session cost ${exact:.2f} for {len(traces)} jobs")
     return records
+
+
+def note_progress(pdir: Path, record: dict) -> None:
+    """The job's line in progress.md (date · what was done · how it was verified), so the Queen needn't spend a turn
+    on it."""
+    answer = [line.strip(" 👑-*") for line in (record.get("answer") or "").splitlines() if line.strip(" 👑-*")]
+    done = (answer[0] if answer else record["goal"].splitlines()[0])[:200]
+    checks = [f"`{r['command']}` {'OK' if r['ok'] else 'FAILED'}" for r in record["acceptance"]["results"]]
+    review = (record.get("summary") or {}).get("review") or {}
+    if review.get("lenses"):
+        checks.append(f"review {'+'.join(review['lenses'])}, {review.get('rounds', 0)} round(s), "
+                      f"{review.get('fixed', 0)} fixed")
+    verified = "; ".join(checks) or record["status"]
+    path = pdir / "progress.md"
+    before = path.read_text(errors="replace") if path.exists() else ""
+    with path.open("a") as out:
+        out.write(("\n" if before and not before.endswith("\n") else "")
+                  + f"- {time.strftime('%Y-%m-%d')} · {done} · {verified}\n")
 
 
 def split_events(run_dir: Path, pdir: Path, traces: list) -> list[Path]:

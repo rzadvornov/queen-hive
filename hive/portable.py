@@ -43,6 +43,12 @@ The first line of every brief (the `prompt`) is a brief ID, then a few words:
 
 
 _FULL_REVIEW = re.compile(r"<!-- full-review -->\n.*?<!-- /full-review -->\n", re.S)
+_MEMORY_NOTE = re.compile(r"<!-- memory-note -->\n.*?<!-- /memory-note -->\n", re.S)
+# Run by the hive CLI, which writes the progress line and runs the acceptance commands itself after the run
+HIVE_RECORDS = """- The hive writes the `progress.md` line and runs the acceptance commands itself after the run: after a clean
+  review, finish right away. Add a line to `decisions.md` or `known-issues.md` in the memory folder only for a new
+  decision or trap. Never write hive memory into the project itself.
+"""
 
 
 def rules_for(provider: str, review: str = "full") -> str:
@@ -51,6 +57,7 @@ def rules_for(provider: str, review: str = "full") -> str:
     rules = (CORE_DIR / "rules" / "queen.md").read_text()
     rules = rules.replace("<!-- full-review -->\n", "").replace("<!-- /full-review -->\n", "") if review == "full" \
         else _FULL_REVIEW.sub("", rules)
+    rules = _MEMORY_NOTE.sub(lambda _: HIVE_RECORDS, rules)
     if provider == "claude":
         return rules
     rules = rules.replace("They run on Haiku unless your instructions name another model for a bee.",

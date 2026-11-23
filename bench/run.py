@@ -21,7 +21,10 @@ from pathlib import Path
 
 BENCH = Path(__file__).resolve().parent
 HOME = Path(os.environ.get("HIVE_BENCH_HOME", Path.home() / ".hive-bench"))
-QUEEN, WORKERS, SOLO, BUDGET = "opus-5.5", "haiku-5.5", "sonnet-5.5,opus-5.5", "3"
+QUEEN = os.environ.get("BENCH_QUEEN", "opus-5.5")            # e.g. BENCH_QUEEN=sonnet-5.5 BENCH_SOLO=sonnet-5.5
+SOLO = os.environ.get("BENCH_SOLO", "sonnet-5.5,opus-5.5")
+TAG = "" if QUEEN == "opus-5.5" else f"-{QUEEN}"               # other Queens get their own result files
+WORKERS, BUDGET = "haiku-5.5", "3"
 
 os.environ["HIVE_HOME"] = str(HOME / "home")
 sys.path.insert(0, str(BENCH.parent))
@@ -104,7 +107,8 @@ def table(results: list[dict]) -> str:
         return f"{mark} {cost} · {mins}"
 
     solos = [s["name"] for s in next((r["solo"] for r in results if r.get("solo")), [])]
-    lines = ["| Task | Hive (Opus 5.5 + Haiku 5.5 bees) | " + " | ".join(f"{n} alone" for n in solos) + " |",
+    queen = QUEEN.replace("-", " ").title()
+    lines = [f"| Task | Hive ({queen} Queen + Haiku 5.5 bees) | " + " | ".join(f"{n} alone" for n in solos) + " |",
              "|---|---|" + "---|" * len(solos)]
     totals = {"hive": [0.0, 0], **{n: [0.0, 0] for n in solos}}
     for r in results:
@@ -125,7 +129,7 @@ def table(results: list[dict]) -> str:
 
 def main() -> None:
     names = [a for a in sys.argv[1:] if not a.startswith("--")]
-    path = BENCH / "results.json"
+    path = BENCH / f"results{TAG}.json"
     results = json.loads(path.read_text()) if path.exists() else []
     if "--table" not in sys.argv:
         for name in names or sorted(p.name for p in (BENCH / "tasks").iterdir() if p.is_dir()):
@@ -133,7 +137,8 @@ def main() -> None:
             path.write_text(json.dumps(results, indent=2, ensure_ascii=False) + "\n")
     order = sorted(p.name for p in (BENCH / "tasks").iterdir() if p.is_dir())
     results.sort(key=lambda r: order.index(r["task"]) if r["task"] in order else 99)
-    (BENCH / "RESULTS.md").write_text("# Benchmark results\n\n" + table(results) + "\n")
+    (BENCH / f"RESULTS{TAG}.md").write_text(f"# Benchmark results{(' · Queen ' + QUEEN) if TAG else ''}\n\n"
+                                            + table(results) + "\n")
     print("\n" + table(results))
 
 

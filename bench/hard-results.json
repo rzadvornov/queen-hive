@@ -18,23 +18,6 @@
   },
   {
     "task": "invoices",
-    "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.1161742,
-    "duration_ms": 34684,
-    "error": null,
-    "hidden": {
-      "run": 7,
-      "passed": 7,
-      "failed": []
-    },
-    "regression": {
-      "run": 2,
-      "passed": 2,
-      "failed": []
-    }
-  },
-  {
-    "task": "invoices",
     "variant": "Claude Opus 5.5 alone",
     "cost_usd": 0.5375458,
     "duration_ms": 149771,
@@ -72,23 +55,6 @@
     "variant": "hive",
     "cost_usd": 0.20898402499999996,
     "duration_ms": 75365,
-    "error": null,
-    "hidden": {
-      "run": 7,
-      "passed": 7,
-      "failed": []
-    },
-    "regression": {
-      "run": 5,
-      "passed": 5,
-      "failed": []
-    }
-  },
-  {
-    "task": "ledger",
-    "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.0721193,
-    "duration_ms": 11891,
     "error": null,
     "hidden": {
       "run": 7,
@@ -154,23 +120,6 @@
   },
   {
     "task": "report",
-    "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.046937400000000004,
-    "duration_ms": 16776,
-    "error": null,
-    "hidden": {
-      "run": 5,
-      "passed": 5,
-      "failed": []
-    },
-    "regression": {
-      "run": 4,
-      "passed": 4,
-      "failed": []
-    }
-  },
-  {
-    "task": "report",
     "variant": "Claude Opus 5.5 alone",
     "cost_usd": 0.38920959999999993,
     "duration_ms": 276331,
@@ -222,23 +171,6 @@
   },
   {
     "task": "uploads",
-    "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.08128640000000001,
-    "duration_ms": 17285,
-    "error": null,
-    "hidden": {
-      "run": 6,
-      "passed": 6,
-      "failed": []
-    },
-    "regression": {
-      "run": 5,
-      "passed": 5,
-      "failed": []
-    }
-  },
-  {
-    "task": "uploads",
     "variant": "Claude Opus 5.5 alone",
     "cost_usd": 0.2601752,
     "duration_ms": 64040,
@@ -259,6 +191,146 @@
     "variant": "hive light",
     "cost_usd": 0.09017298000000003,
     "duration_ms": 50465,
+    "error": null,
+    "hidden": {
+      "run": 6,
+      "passed": 6,
+      "failed": []
+    },
+    "regression": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    }
+  },
+  {
+    "task": "invoices",
+    "variant": "hive sonnet",
+    "cost_usd": 0.15074715,
+    "duration_ms": 200424,
+    "error": null,
+    "hidden": {
+      "run": 7,
+      "passed": 4,
+      "failed": [
+        "hidden_tests.test_hidden.Currencies.test_save_and_load_keep_currency",
+        "hidden_tests.test_hidden.Currencies.test_symbols",
+        "hidden_tests.test_hidden.Currencies.test_total_equals_printed_lines"
+      ]
+    },
+    "regression": {
+      "run": 2,
+      "passed": 2,
+      "failed": []
+    }
+  },
+  {
+    "task": "invoices",
+    "variant": "Claude Sonnet 5.5 alone",
+    "cost_usd": 0.10368129999999998,
+    "duration_ms": 38623,
+    "error": null,
+    "hidden": {
+      "run": 7,
+      "passed": 7,
+      "failed": []
+    },
+    "regression": {
+      "run": 2,
+      "passed": 2,
+      "failed": []
+    }
+  },
+  {
+    "task": "ledger",
+    "variant": "hive sonnet",
+    "cost_usd": 0.09582070000000001,
+    "duration_ms": 68766,
+    "error": null,
+    "hidden": {
+      "run": 7,
+      "passed": 7,
+      "failed": []
+    },
+    "regression": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    }
+  },
+  {
+    "task": "ledger",
+    "variant": "Claude Sonnet 5.5 alone",
+    "cost_usd": 0.055504700000000004,
+    "duration_ms": 22900,
+    "error": null,
+    "hidden": {
+      "run": 7,
+      "passed": 7,
+      "failed": []
+    },
+    "regression": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    }
+  },
+  {
+    "task": "report",
+    "variant": "hive sonnet",
+    "cost_usd": 0.13854390000000005,
+    "duration_ms": 315095,
+    "error": null,
+    "hidden": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    },
+    "regression": {
+      "run": 4,
+      "passed": 4,
+      "failed": []
+    }
+  },
+  {
+    "task": "report",
+    "variant": "Claude Sonnet 5.5 alone",
+    "cost_usd": 0.066983,
+    "duration_ms": 85134,
+    "error": null,
+    "hidden": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    },
+    "regression": {
+      "run": 4,
+      "passed": 4,
+      "failed": []
+    }
+  },
+  {
+    "task": "uploads",
+    "variant": "hive sonnet",
+    "cost_usd": 0.08799952999999999,
+    "duration_ms": 89235,
+    "error": null,
+    "hidden": {
+      "run": 6,
+      "passed": 6,
+      "failed": []
+    },
+    "regression": {
+      "run": 5,
+      "passed": 5,
+      "failed": []
+    }
+  },
+  {
+    "task": "uploads",
+    "variant": "Claude Sonnet 5.5 alone",
+    "cost_usd": 0.0613071,
+    "duration_ms": 21796,
     "error": null,
     "hidden": {
       "run": 6,

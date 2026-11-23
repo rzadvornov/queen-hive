@@ -1,0 +1,184 @@
+[
+  {
+    "task": "dates",
+    "kind": "bug fix",
+    "hive": {
+      "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
+      "cost_usd": 0.10679925,
+      "passed": true,
+      "duration_ms": 85180,
+      "briefs": 2,
+      "returns": 0,
+      "review": {
+        "lenses": [
+          "goal",
+          "correctness",
+          "tests"
+        ],
+        "rounds": 1,
+        "confirmed": 0,
+        "fixed": 0,
+        "dismissed": 0,
+        "suggestions": [],
+        "open": []
+      }
+    },
+    "solo": [
+      {
+        "name": "Claude Sonnet 5.5",
+        "cost_usd": 0.0807543,
+        "passed": true,
+        "duration_ms": 30513,
+        "error": null
+      }
+    ]
+  },
+  {
+    "task": "discounts",
+    "kind": "feature",
+    "hive": {
+      "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
+      "cost_usd": 0.18186212,
+      "passed": true,
+      "duration_ms": 455960,
+      "briefs": 2,
+      "returns": 0,
+      "review": {
+        "lenses": [
+          "goal",
+          "correctness",
+          "tests"
+        ],
+        "rounds": 1,
+        "confirmed": 0,
+        "fixed": 0,
+        "dismissed": 0,
+        "suggestions": [
+          "Confirm with the product owner that half price means the customer pays price // 2 for odd croissant prices"
+        ],
+        "open": []
+      }
+    },
+    "solo": [
+      {
+        "name": "Claude Sonnet 5.5",
+        "cost_usd": 0.0693642,
+        "passed": true,
+        "duration_ms": 12630,
+        "error": null
+      }
+    ]
+  },
+  {
+    "task": "inventory",
+    "kind": "multi-file feature",
+    "hive": {
+      "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
+      "cost_usd": 0.08725945000000002,
+      "passed": true,
+      "duration_ms": 84192,
+      "briefs": 2,
+      "returns": 0,
+      "review": {
+        "lenses": [
+          "goal",
+          "correctness",
+          "tests"
+        ],
+        "rounds": 1,
+        "confirmed": 0,
+        "fixed": 0,
+        "dismissed": 0,
+        "suggestions": [
+          "Reject NaN price in `add` so JSON export stays valid",
+          "CSV stdout CRLF on Windows (text mode, no newline='')"
+        ],
+        "open": []
+      }
+    },
+    "solo": [
+      {
+        "name": "Claude Sonnet 5.5",
+        "cost_usd": 0.08218080000000001,
+        "passed": true,
+        "duration_ms": 23904,
+        "error": null
+      }
+    ]
+  },
+  {
+    "task": "reports",
+    "kind": "feature + refactor",
+    "hive": {
+      "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
+      "cost_usd": 0.10400199999999998,
+      "passed": true,
+      "duration_ms": 130308,
+      "briefs": 1,
+      "returns": 0,
+      "review": {
+        "lenses": [
+          "goal",
+          "correctness",
+          "tests"
+        ],
+        "rounds": 1,
+        "confirmed": 0,
+        "fixed": 0,
+        "dismissed": 0,
+        "suggestions": [
+          "Heading ending in ' #' loses the # in Markdown (ATX closing sequence)",
+          "Region text not escaped for inline Markdown emphasis characters"
+        ],
+        "open": []
+      }
+    },
+    "solo": [
+      {
+        "name": "Claude Sonnet 5.5",
+        "cost_usd": 0.0537717,
+        "passed": true,
+        "duration_ms": 17595,
+        "error": null
+      }
+    ]
+  },
+  {
+    "task": "ttlcache",
+    "kind": "implement from spec",
+    "hive": {
+      "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
+      "cost_usd": 0.11759530500000001,
+      "passed": true,
+      "duration_ms": 429264,
+      "briefs": 3,
+      "returns": 0,
+      "review": {
+        "lenses": [
+          "goal",
+          "correctness",
+          "tests"
+        ],
+        "rounds": 1,
+        "confirmed": 1,
+        "fixed": 1,
+        "dismissed": 0,
+        "suggestions": [
+          "cached profiles returned by reference",
+          "TTLCache not thread-safe; O(n) expired scan on full put",
+          "test_expired_get_removes_entry reads private _entries"
+        ],
+        "open": []
+      }
+    },
+    "solo": [
+      {
+        "name": "Claude Sonnet 5.5",
+        "cost_usd": 0.0962405,
+        "passed": true,
+        "duration_ms": 22823,
+        "error": null
+      }
+    ]
+  }
+]

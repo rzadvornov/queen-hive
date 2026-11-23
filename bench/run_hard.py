@@ -29,7 +29,9 @@ HOME = Path(os.environ.get("HIVE_BENCH_HOME", Path.home() / ".hive-bench")) / "h
 BUDGET, LIMIT = "8", 3600   # USD per run; seconds for one hive run including its --compare runs
 SOLO = "sonnet-5.5,opus-5.5"
 VARIANTS = {"hive": ["--queen", "opus-5.5", "--review", "full", "--compare", SOLO, "--yes"],
-            "hive light": ["--queen", "sonnet-5.5", "--review", "light"]}
+            "hive light": ["--queen", "sonnet-5.5", "--review", "light"],
+            "hive sonnet": ["--queen", "sonnet-5.5", "--review", "full", "--compare", "sonnet-5.5", "--yes"]}
+DEFAULT_VARIANTS = ("hive", "hive light")   # --variants "hive sonnet" runs others
 
 os.environ["HIVE_HOME"] = str(HOME / "home")
 sys.path.insert(0, str(BENCH.parent))
@@ -150,13 +152,19 @@ def table(results: list[dict]) -> str:
 
 
 def main() -> None:
-    names = [a for a in sys.argv[1:] if not a.startswith("--")]
+    args = sys.argv[1:]
+    chosen = DEFAULT_VARIANTS
+    if "--variants" in args:
+        i = args.index("--variants")
+        chosen = tuple(v.strip() for v in args[i + 1].split(","))
+        args = args[:i] + args[i + 2:]
+    names = [a for a in args if not a.startswith("--")]
     path = BENCH / "hard-results.json"
     results = json.loads(path.read_text()) if path.exists() else []
     if "--table" not in sys.argv:
         for task in names or sorted(p.name for p in (BENCH / "hard").iterdir() if p.is_dir()):
             info = json.loads((BENCH / "hard" / task / "task.json").read_text())
-            for variant in VARIANTS:
+            for variant in chosen:
                 print(f"▶ {task} · {variant} …", flush=True)
                 entries = run_variant(task, info, variant)
                 for e in entries:

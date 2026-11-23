@@ -4,7 +4,7 @@
 
 A Queen model breaks your goal into small briefs and sends cheap **worker bees** to build, scout and review. She re-runs every check herself, an independent review runs before anything is called done, hooks enforce what agents may not touch, and every job leaves a record of what was done, how it was verified and what it cost.
 
-Compared like for like, a hive with an Opus 5.5 Queen costs about 30% less than Opus 5.5 alone on [our benchmarks](#benchmarks), with the same results, because the Queen coordinates while cheap bees do the reading and writing. With a Sonnet 5.5 Queen it gets the same results as Sonnet 5.5 alone but still costs about 45% more: on tasks this small, the Queen's fixed overhead weighs as much as the whole task.
+Compared like for like, a hive with an Opus 5.5 Queen costs about 30% less than Opus 5.5 alone on [our benchmarks](#benchmarks), with the same results, because the Queen coordinates while cheap bees do the reading and writing. With a Sonnet 5.5 Queen it gets the same results as Sonnet 5.5 alone for about 25% more, a few cents per task.
 
 ![A Queen Hive run: the Queen sends a builder and reviewers, checks their work and reports the cost](https://raw.githubusercontent.com/rzadvornov/queen-hive/main/docs/media/demo.gif)
 
@@ -76,12 +76,14 @@ With a Sonnet 5.5 Queen, measured the same way on all nine tasks against Sonnet 
 | | Hive with a Sonnet 5.5 Queen, 9 tasks | Sonnet 5.5 alone |
 |---|---|---|
 | Full review | 8/9 correct · $1.07 | 9/9 · $0.67 |
-| Light review by default, a lighter rule set, the request passed to bees word for word | **9/9 correct · $0.97** | 9/9 · $0.67 |
+| Light review by default, a lighter rule set, the request passed to bees word for word | 9/9 correct · $0.97 | 9/9 · $0.67 |
+| Bees in the foreground (no extra turn per report), no waiting turns | **9/9 correct · $0.74** | 9/9 · $0.59 |
 
 The miss in the first row taught a lesson: the Queen, who no longer reads the code, had narrowed "the rates in
 rates.json" to the currencies the issue named. Briefs now carry the user's request word for word and point to sources
-instead of restating them. The Sonnet-Queen hive is still about 45% dearer than Sonnet alone: a Queen needs a few turns
-of her own (brief, check, review, summary), which on tasks this small cost as much as Sonnet doing the whole task.
+instead of restating them. The last row came from tracing the Queen's turns: bees ran in the background, so each report woke her with an extra
+turn, and she spent turns waiting. The Sonnet-Queen hive is now about 25% dearer than Sonnet alone, within a few cents per
+task: a Queen still needs a few turns of her own (brief, check, review, summary).
 
 Apart from that one miss, every variant passed every task in every round, so these tasks show cost, not quality: on self-contained work of this
 size the hive's checks and review didn't change a result. Each figure is one run per task, and single runs vary

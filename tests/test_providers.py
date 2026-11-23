@@ -655,6 +655,7 @@ def test_lighter_rules_without_a_full_review():
     assert "R-goal+tests" in light and len(light) < len(full) - 800
     assert "word for word" in light and "Never narrow the request" in light      # briefs carry the request as asked
     assert "**Medium:**" not in portable.rules_for("gpt", "light")
+    assert "run_in_background: false" in full and "run_in_background" not in portable.rules_for("gpt")  # Claude's Agent tool only
 
 
 def test_a_sonnet_queen_defaults_to_the_light_review(tmp_path, monkeypatch):

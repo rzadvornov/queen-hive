@@ -206,8 +206,8 @@
   {
     "task": "invoices",
     "variant": "hive sonnet",
-    "cost_usd": 0.14056540000000003,
-    "duration_ms": 357906,
+    "cost_usd": 0.100167255,
+    "duration_ms": 148718,
     "error": null,
     "hidden": {
       "run": 7,
@@ -223,8 +223,8 @@
   {
     "task": "invoices",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.12326920000000002,
-    "duration_ms": 35981,
+    "cost_usd": 0.10977790000000001,
+    "duration_ms": 37771,
     "error": null,
     "hidden": {
       "run": 7,
@@ -240,8 +240,8 @@
   {
     "task": "ledger",
     "variant": "hive sonnet",
-    "cost_usd": 0.11460084999999996,
-    "duration_ms": 68177,
+    "cost_usd": 0.071235995,
+    "duration_ms": 54839,
     "error": null,
     "hidden": {
       "run": 7,
@@ -257,8 +257,8 @@
   {
     "task": "ledger",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.0550026,
-    "duration_ms": 14402,
+    "cost_usd": 0.044702,
+    "duration_ms": 11260,
     "error": null,
     "hidden": {
       "run": 7,
@@ -274,8 +274,8 @@
   {
     "task": "report",
     "variant": "hive sonnet",
-    "cost_usd": 0.12085462000000001,
-    "duration_ms": 417835,
+    "cost_usd": 0.09050736499999996,
+    "duration_ms": 354934,
     "error": null,
     "hidden": {
       "run": 5,
@@ -291,8 +291,8 @@
   {
     "task": "report",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.0682401,
-    "duration_ms": 16064,
+    "cost_usd": 0.07532929999999999,
+    "duration_ms": 26143,
     "error": null,
     "hidden": {
       "run": 5,
@@ -308,8 +308,8 @@
   {
     "task": "uploads",
     "variant": "hive sonnet",
-    "cost_usd": 0.08037382,
-    "duration_ms": 62569,
+    "cost_usd": 0.07381251000000001,
+    "duration_ms": 242869,
     "error": null,
     "hidden": {
       "run": 6,
@@ -325,8 +325,8 @@
   {
     "task": "uploads",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.060188599999999995,
-    "duration_ms": 19408,
+    "cost_usd": 0.058365200000000006,
+    "duration_ms": 18491,
     "error": null,
     "hidden": {
       "run": 6,

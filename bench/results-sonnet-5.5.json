@@ -4,9 +4,9 @@
     "kind": "bug fix",
     "hive": {
       "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.11358372000000001,
+      "cost_usd": 0.07072482,
       "passed": true,
-      "duration_ms": 68864,
+      "duration_ms": 173754,
       "briefs": 2,
       "returns": 0,
       "review": {
@@ -15,21 +15,19 @@
           "tests"
         ],
         "rounds": 1,
-        "confirmed": 1,
-        "fixed": 1,
+        "confirmed": 0,
+        "fixed": 0,
         "dismissed": 0,
-        "suggestions": [
-          "negative months is untested (out of scope)"
-        ],
+        "suggestions": [],
         "open": []
       }
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.0791567,
+        "cost_usd": 0.0577118,
         "passed": true,
-        "duration_ms": 23211,
+        "duration_ms": 15443,
         "error": null
       }
     ]
@@ -39,10 +37,10 @@
     "kind": "feature",
     "hive": {
       "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.11191896499999998,
+      "cost_usd": 0.07603458,
       "passed": true,
-      "duration_ms": 116845,
-      "briefs": 3,
+      "duration_ms": 60516,
+      "briefs": 2,
       "returns": 0,
       "review": {
         "lenses": [
@@ -50,21 +48,21 @@
           "tests"
         ],
         "rounds": 1,
-        "confirmed": 1,
-        "fixed": 1,
+        "confirmed": 0,
+        "fixed": 0,
         "dismissed": 0,
-        "suggestions": [
-          "Confirm half-price rounding (price // 2) for odd croissant prices with the product owner"
-        ],
-        "open": []
+        "suggestions": [],
+        "open": [
+          "half-price rounding (price // 2) for odd prices not confirmed by the product owner"
+        ]
       }
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.047469800000000006,
+        "cost_usd": 0.0483082,
         "passed": true,
-        "duration_ms": 20401,
+        "duration_ms": 12670,
         "error": null
       }
     ]
@@ -74,9 +72,9 @@
     "kind": "multi-file feature",
     "hive": {
       "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.08934127999999997,
+      "cost_usd": 0.074420855,
       "passed": true,
-      "duration_ms": 156707,
+      "duration_ms": 53207,
       "briefs": 2,
       "returns": 0,
       "review": {
@@ -89,19 +87,19 @@
         "fixed": 0,
         "dismissed": 0,
         "suggestions": [
-          "CSV stdout may double CRLF on Windows (known)",
-          "NaN price yields invalid JSON (known)",
-          "CSV/--out use platform default encoding"
+          "Add a test that --out is not truncated on a load error"
         ],
-        "open": []
+        "open": [
+          "NaN price exports bare NaN in JSON"
+        ]
       }
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.0569498,
+        "cost_usd": 0.0600217,
         "passed": true,
-        "duration_ms": 20480,
+        "duration_ms": 15557,
         "error": null
       }
     ]
@@ -111,44 +109,9 @@
     "kind": "feature + refactor",
     "hive": {
       "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.10314596999999998,
+      "cost_usd": 0.09428999500000004,
       "passed": true,
-      "duration_ms": 436003,
-      "briefs": 2,
-      "returns": 0,
-      "review": {
-        "lenses": [
-          "goal",
-          "tests"
-        ],
-        "rounds": 1,
-        "confirmed": 0,
-        "fixed": 0,
-        "dismissed": 0,
-        "suggestions": [
-          "Renamed misleading test name test_markdown_u2028_becomes_space"
-        ],
-        "open": []
-      }
-    },
-    "solo": [
-      {
-        "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.0787928,
-        "passed": true,
-        "duration_ms": 28299,
-        "error": null
-      }
-    ]
-  },
-  {
-    "task": "ttlcache",
-    "kind": "implement from spec",
-    "hive": {
-      "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.09340746499999998,
-      "passed": true,
-      "duration_ms": 177462,
+      "duration_ms": 107850,
       "briefs": 2,
       "returns": 0,
       "review": {
@@ -160,18 +123,49 @@
         "confirmed": 1,
         "fixed": 1,
         "dismissed": 0,
-        "suggestions": [
-          "Add a test pinning the default TTL (60 s) in ProfileService"
-        ],
+        "suggestions": [],
         "open": []
       }
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.10200050000000001,
+        "cost_usd": 0.0541026,
         "passed": true,
-        "duration_ms": 73164,
+        "duration_ms": 13696,
+        "error": null
+      }
+    ]
+  },
+  {
+    "task": "ttlcache",
+    "kind": "implement from spec",
+    "hive": {
+      "name": "Claude Sonnet 5.5 + Claude Haiku 5.5",
+      "cost_usd": 0.08886011499999999,
+      "passed": true,
+      "duration_ms": 90680,
+      "briefs": 3,
+      "returns": 0,
+      "review": {
+        "lenses": [
+          "goal",
+          "tests"
+        ],
+        "rounds": 1,
+        "confirmed": 4,
+        "fixed": 4,
+        "dismissed": 0,
+        "suggestions": [],
+        "open": []
+      }
+    },
+    "solo": [
+      {
+        "name": "Claude Sonnet 5.5",
+        "cost_usd": 0.07928199999999999,
+        "passed": true,
+        "duration_ms": 22819,
         "error": null
       }
     ]

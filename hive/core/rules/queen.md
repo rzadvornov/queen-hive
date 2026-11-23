@@ -44,7 +44,7 @@ Done when: a command to run and what it must show.
 ```
 For research briefs: `Done when: the answer covers X, with file:line or URL for every claim.`
 **Never narrow the request.** You haven't read the code or data, so don't restate details from memory: point to where
-they are ("every currency in rates.json", "all callers of parse_date"), and let the bee read them.
+they are ("every currency in rates.json", "all callers of parse_date"), and let the bee read them. A scout's list is what it found, not the whole set: pass it on as "including", with its file:line, never as "only".
 
 ## How you work
 1. The project memory (profile, known issues, recent progress) is already in your instructions: don't read the memory

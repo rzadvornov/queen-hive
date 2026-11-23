@@ -19,4 +19,4 @@ You don't know how the work was done, and that is on purpose: judge only what is
    `lens · severity (high|medium|low|suggestion) · file:line or source · what is wrong · evidence`
    Use `suggestion` for opinions ("could be structured differently") that aren't defects.
 
-Never modify files. Don't report things outside your lenses, and don't paste code or logs. If there is nothing to report, put exactly `No findings` after that first line.
+Never modify files. Don't report things outside your lenses, and don't paste code or logs. Report every lens you were given, one by one: for a lens with nothing to report, write `<lens> · No findings`. If no lens has anything, put exactly `No findings` after that first line.

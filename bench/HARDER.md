@@ -93,3 +93,9 @@ Every variant, Sonnet 5.5 alone included, passed every hidden test with no regre
 apart, and the traps (daylight saving, symlinks, byte-identical floats, per-line rounding) were caught by every model.
 The full run as designed would need much larger, longer tasks, for example real issues in real multi-thousand-line
 codebases. Until then, the cheapest configuration with the same results here is a Sonnet 5.5 Queen with the light review; the defaults stay Opus 5.5 with the full review.
+
+## After three rounds of a cheaper Queen
+
+The same four tasks, re-run after the Queen was changed to coordinate only (see the README's benchmark section):
+every variant still solved every task, and the hive with an Opus 5.5 Queen cost $1.03 against $1.37 for Opus 5.5
+alone ([HARD-RESULTS.md](HARD-RESULTS.md)). The tasks are still too easy to show a difference in quality.

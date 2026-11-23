@@ -4,9 +4,9 @@
 
 A Queen model breaks your goal into small briefs and sends cheap **worker bees** to build, scout and review. She re-runs every check herself, an independent review runs before anything is called done, hooks enforce what agents may not touch, and every job leaves a record of what was done, how it was verified and what it cost.
 
-It doesn't make an agent smarter or cheaper on its own: in [our benchmarks](#benchmarks) a single Claude model solved the same tasks for less. What it adds is a process you can check.
+Compared like for like, a hive with an Opus 5.5 Queen costs about 30% less than Opus 5.5 alone on [our benchmarks](#benchmarks), with the same results, because the Queen coordinates while cheap bees do the reading and writing. With a Sonnet 5.5 Queen it still costs more than Sonnet 5.5 alone; that's the next target.
 
-![A Queen Hive run: the Queen sends a builder and seven reviewers, checks their work and reports the cost](https://raw.githubusercontent.com/rzadvornov/queen-hive/main/docs/media/demo.gif)
+![A Queen Hive run: the Queen sends a builder and reviewers, checks their work and reports the cost](https://raw.githubusercontent.com/rzadvornov/queen-hive/main/docs/media/demo.gif)
 
 <sub>The output of a real run from the [first benchmark](#benchmarks) (the defaults: Opus 5.5 Queen, full review), replayed faster (the run took 2 minutes).</sub>
 
@@ -28,32 +28,56 @@ hive "Fix the failing tests in ~/projects/api"
 
 ## Benchmarks
 
-Two benchmarks so far, both on Claude, both published as they came out ([bench/](bench/)).
+Two benchmarks, both on Claude, published as they came out ([bench/](bench/)), with every hive run against single
+models in copies of the same repo. The defaults: Opus 5.5 Queen, Haiku 5.5 bees, full review.
 
-**1. Five small tasks** (bug fix, feature, multi-file feature, refactor, implement-from-spec), each with a product owner's acceptance test the hive may not edit. Full hive: Opus 5.5 Queen, Haiku 5.5 bees, full review.
+**1. Five small tasks** (bug fix, feature, multi-file feature, refactor, implement-from-spec), each with a product
+owner's acceptance test the hive may not edit.
 
 | Task | Hive (Opus 5.5 + Haiku 5.5 bees) | Claude Sonnet 5.5 alone | Claude Opus 5.5 alone |
 |---|---|---|---|
-| dates (bug fix) | ✅ $0.80 · 2.9m | ✅ $0.08 · 0.3m | ✅ $0.22 · 0.7m |
-| discounts (feature) | ✅ $0.60 · 2.0m | ✅ $0.06 · 0.2m | ✅ $0.25 · 0.8m |
-| inventory (multi-file feature) | ✅ $0.87 · 3.3m | ✅ $0.07 · 0.3m | ✅ $0.28 · 1.0m |
-| reports (feature + refactor) | ✅ $1.07 · 4.6m | ✅ $0.07 · 0.2m | ✅ $0.34 · 1.3m |
-| ttlcache (implement from spec) | ✅ $1.10 · 5.3m | ✅ $0.12 · 0.3m | ✅ $0.43 · 1.4m |
-| **Total** | **5/5 passed · $4.45** | **5/5 passed · $0.41** | **5/5 passed · $1.54** |
+| dates (bug fix) | ✅ $0.23 · 1.4m | ✅ $0.08 · 0.3m | ✅ $0.22 · 0.6m |
+| discounts (feature) | ✅ $0.22 · 2.5m | ✅ $0.05 · 0.2m | ✅ $0.18 · 0.7m |
+| inventory (multi-file feature) | ✅ $0.21 · 1.6m | ✅ $0.06 · 0.3m | ✅ $0.25 · 1.0m |
+| reports (feature + refactor) | ✅ $0.17 · 1.8m | ✅ $0.06 · 0.2m | ✅ $0.30 · 1.3m |
+| ttlcache (implement from spec) | ✅ $0.19 · 0.9m | ✅ $0.11 · 0.5m | ✅ $0.59 · 1.8m |
+| **Total** | **5/5 passed · $1.02** | **5/5 passed · $0.35** | **5/5 passed · $1.53** |
 
-**2. Four realistic issues, scored on hidden tests** ([design](bench/HARDER.md)): a vague "totals are off in summer" bug (daylight saving), an upload path-traversal fix (symlinks, absolute paths, names like `..hidden` that must keep working), a 5× speed-up with byte-identical output, and multi-currency invoices (rounding, JPY). Agents saw only the issue and the visible tests; hidden tests and regression tests were run afterwards.
+**2. Four realistic issues, scored on hidden tests** ([design](bench/HARDER.md)): a vague "totals are off in summer"
+bug (daylight saving), an upload path-traversal fix (symlinks, absolute paths, names like `..hidden` that must keep
+working), a 5× speed-up with byte-identical output, and multi-currency invoices (rounding, JPY). Agents saw only the
+issue and the visible tests; hidden and regression tests were run afterwards. "hive light" is a Sonnet 5.5 Queen with
+`--review light`.
 
 Each cell: hidden tests passed · regressions · cost · time.
 
 | Task | hive | Claude Sonnet 5.5 alone | Claude Opus 5.5 alone | hive light |
 |---|---|---|---|---|
-| invoices | 100% · 0 · $1.39 · 6.5m | 100% · 0 · $0.10 · 0.5m | 100% · 0 · $0.68 · 3.1m | 100% · 0 · $0.30 · 3.1m |
-| ledger | 100% · 0 · $1.08 · 4.5m | 100% · 0 · $0.07 · 0.2m | 100% · 0 · $0.23 · 0.9m | 100% · 0 · $0.17 · 1.0m |
-| report | 100% · 0 · $0.76 · 3.8m | 100% · 0 · $0.06 · 2.1m | 100% · 0 · $0.38 · 3.8m | 100% · 0 · $0.24 · 6.0m |
-| uploads | 100% · 0 · $1.21 · 4.9m | 100% · 0 · $0.07 · 0.3m | 100% · 0 · $0.19 · 0.7m | 100% · 0 · $0.21 · 1.9m |
-| **Total** | **4/4 correct · $4.43** · $1.11 per correct task | **4/4 correct · $0.30** · $0.08 per correct task | **4/4 correct · $1.47** · $0.37 per correct task | **4/4 correct · $0.92** · $0.23 per correct task |
+| invoices | 100% · 0 · $0.39 · 5.3m | 100% · 0 · $0.12 · 0.6m | 100% · 0 · $0.54 · 2.5m | 100% · 0 · $0.16 · 2.5m |
+| ledger | 100% · 0 · $0.21 · 1.3m | 100% · 0 · $0.07 · 0.2m | 100% · 0 · $0.19 · 0.8m | 100% · 0 · $0.09 · 1.0m |
+| report | 100% · 0 · $0.22 · 2.8m | 100% · 0 · $0.05 · 0.3m | 100% · 0 · $0.39 · 4.6m | 100% · 0 · $0.18 · 10.6m |
+| uploads | 100% · 0 · $0.21 · 1.3m | 100% · 0 · $0.08 · 0.3m | 100% · 0 · $0.26 · 1.1m | 100% · 0 · $0.09 · 0.8m |
+| **Total** | **4/4 correct · $1.03** · $0.26 per correct task | **4/4 correct · $0.32** · $0.08 per correct task | **4/4 correct · $1.37** · $0.34 per correct task | **4/4 correct · $0.52** · $0.13 per correct task |
 
-**What this shows:** every variant solved every task, so on self-contained work of this size the hive's checks and review change nothing in the result. They cost 3–15× more. The defaults stay the thorough setup (Opus 5.5 Queen, full review). For everyday work, the cheapest setup that keeps the hive's guards and review is `--queen sonnet-5.5 --review light`: $0.23 per task above, with the same results. Larger, longer tasks may tell a different story; that benchmark hasn't been run.
+**How the hive got here.** The first runs cost 3× Opus alone: the Queen read files, diffs and test logs herself, so
+she spent more than one model alone on the whole task. Three rounds of changes, each measured on the same nine tasks:
+
+Compared like for like, the hive's Queen against the same model alone:
+
+| | Hive with an Opus 5.5 Queen, 9 tasks | Opus 5.5 alone |
+|---|---|---|
+| First version | $8.88 | $3.01 |
+| 1. The Queen coordinates and bees read; checks return only the verdict; 5-minute cache for headless runs | (interrupted) | |
+| 2. Queen effort capped at `high`; no automatic second review round; 4-line reviewer briefs | $2.94 | $2.66 |
+| 3. Review sized to the change; headless runs without your personal setup | **$2.05** | $2.90 |
+
+With a Sonnet 5.5 Queen (and the light review), only benchmark 2 has the pair so far: $0.52 for the hive against
+$0.32 for Sonnet 5.5 alone, still about 60% more. Making the Sonnet-Queen hive cheaper than Sonnet alone is the next target.
+
+Every variant passed every task in every round, so these tasks show cost, not quality: on self-contained work of this
+size the hive's checks and review didn't change a result. Each figure is one run per task, and single runs vary
+(Opus alone cost $0.33–0.59 on the same task across rounds). Costs are the API-equivalent price on a Claude
+subscription.
 
 ## Install
 

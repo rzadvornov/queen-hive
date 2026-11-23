@@ -4,45 +4,38 @@
     "kind": "bug fix",
     "hive": {
       "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.80272713,
+      "cost_usd": 0.22730195499999997,
       "passed": true,
-      "duration_ms": 171857,
-      "briefs": 10,
+      "duration_ms": 84131,
+      "briefs": 3,
       "returns": 0,
       "review": {
         "lenses": [
           "goal",
           "correctness",
-          "tests",
-          "arch",
-          "perf",
-          "rules",
-          "security"
+          "tests"
         ],
-        "rounds": 2,
-        "confirmed": 1,
-        "fixed": 1,
-        "dismissed": 1,
-        "suggestions": [
-          "Validate months/count before calling next_billing_date/schedule if untrusted input can reach them (huge values and years outside 1-9999 raise errors, same as before the change)",
-          "Add tests for a 30th start in a common-year February and the 1900/2000 century leap rule"
-        ],
+        "rounds": 1,
+        "confirmed": 4,
+        "fixed": 4,
+        "dismissed": 0,
+        "suggestions": [],
         "open": []
       }
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.0779522,
+        "cost_usd": 0.08051520000000001,
         "passed": true,
-        "duration_ms": 17065,
+        "duration_ms": 15389,
         "error": null
       },
       {
         "name": "Claude Opus 5.5",
-        "cost_usd": 0.2249698,
+        "cost_usd": 0.21835500000000002,
         "passed": true,
-        "duration_ms": 44863,
+        "duration_ms": 38884,
         "error": null
       }
     ]
@@ -52,19 +45,16 @@
     "kind": "feature",
     "hive": {
       "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.6000596749999999,
+      "cost_usd": 0.21930658500000003,
       "passed": true,
-      "duration_ms": 118243,
-      "briefs": 8,
+      "duration_ms": 150345,
+      "briefs": 2,
       "returns": 0,
       "review": {
         "lenses": [
           "goal",
           "correctness",
           "tests",
-          "arch",
-          "perf",
-          "rules",
           "security"
         ],
         "rounds": 1,
@@ -72,28 +62,26 @@
         "fixed": 0,
         "dismissed": 4,
         "suggestions": [
-          "Confirm half-price rounding for odd prices (customer pays price // 2)",
-          "Tighten Cart.add() validation for NaN/inf/fractional quantities (pre-existing; changes behaviour)",
-          "Add Cart-level unit tests for each rule on its own",
-          "Iterate a list of discount callables in total() if more rules arrive",
-          "Consider untracking __pycache__/*.pyc from git"
+          "Validate quantities in Cart.add() (inf/NaN/negative), pending product-owner approval"
         ],
-        "open": []
+        "open": [
+          "Odd-price half-price rounding (price // 2) not yet confirmed by product owner"
+        ]
       }
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.0649455,
+        "cost_usd": 0.047469000000000004,
         "passed": true,
-        "duration_ms": 13008,
+        "duration_ms": 12816,
         "error": null
       },
       {
         "name": "Claude Opus 5.5",
-        "cost_usd": 0.25198339999999997,
+        "cost_usd": 0.1771496,
         "passed": true,
-        "duration_ms": 45348,
+        "duration_ms": 43781,
         "error": null
       }
     ]
@@ -103,49 +91,49 @@
     "kind": "multi-file feature",
     "hive": {
       "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 0.87417861,
+      "cost_usd": 0.21214378000000003,
       "passed": true,
-      "duration_ms": 196447,
-      "briefs": 11,
+      "duration_ms": 97253,
+      "briefs": 3,
       "returns": 0,
       "review": {
         "lenses": [
           "goal",
-          "correctness",
           "tests",
-          "arch",
-          "perf",
           "rules",
-          "security"
+          "correctness",
+          "security",
+          "arch",
+          "perf"
         ],
-        "rounds": 2,
-        "confirmed": 1,
-        "fixed": 1,
-        "dismissed": 8,
+        "rounds": 1,
+        "confirmed": 0,
+        "fixed": 0,
+        "dismissed": 4,
         "suggestions": [
-          "guard --out against the store path (data loss if equal)",
-          "derive CSV fieldnames from dataclasses.fields(store.Item)",
-          "move CSV/JSON writers out of cli.py / explicit json branch",
+          "Refuse --out that resolves to the store file",
           "CSV formula-injection escaping",
-          "reject non-finite prices in add (NaN -> invalid JSON)",
-          "unit tests for json --out and --out \"\""
+          "Explicit json branch in _write_export"
         ],
-        "open": []
+        "open": [
+          "add accepts NaN price, so JSON export emits bare NaN",
+          "CSV to stdout may give \\r\\r\\n on Windows"
+        ]
       }
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.07310080000000001,
+        "cost_usd": 0.0586503,
         "passed": true,
-        "duration_ms": 15687,
+        "duration_ms": 17249,
         "error": null
       },
       {
         "name": "Claude Opus 5.5",
-        "cost_usd": 0.28491120000000003,
+        "cost_usd": 0.247379,
         "passed": true,
-        "duration_ms": 59965,
+        "duration_ms": 62063,
         "error": null
       }
     ]
@@ -155,31 +143,24 @@
     "kind": "feature + refactor",
     "hive": {
       "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 1.07270162,
+      "cost_usd": 0.16916014499999998,
       "passed": true,
-      "duration_ms": 273473,
-      "briefs": 11,
+      "duration_ms": 110551,
+      "briefs": 1,
       "returns": 0,
       "review": {
         "lenses": [
           "goal",
           "correctness",
-          "tests",
-          "arch",
-          "perf",
-          "rules",
-          "security"
+          "tests"
         ],
-        "rounds": 2,
-        "confirmed": 3,
-        "fixed": 3,
-        "dismissed": 2,
+        "rounds": 1,
+        "confirmed": 0,
+        "fixed": 0,
+        "dismissed": 0,
         "suggestions": [
-          "HTML/Markdown-escape region and title content (would change existing HTML output; separate task)",
-          "Title ending in ' #' loses the '#' when the Markdown is displayed",
-          "Share a row model across renderers",
-          "Return a NamedTuple from _summarize",
-          "Dict-based format dispatch in render()"
+          "Escape Markdown emphasis characters in region names/title",
+          "Add a markdown test pinning tie order for equal revenue"
         ],
         "open": []
       }
@@ -187,16 +168,16 @@
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.0700804,
+        "cost_usd": 0.0551464,
         "passed": true,
-        "duration_ms": 14087,
+        "duration_ms": 14069,
         "error": null
       },
       {
         "name": "Claude Opus 5.5",
-        "cost_usd": 0.3435142,
+        "cost_usd": 0.2974466,
         "passed": true,
-        "duration_ms": 75358,
+        "duration_ms": 75933,
         "error": null
       }
     ]
@@ -206,48 +187,26 @@
     "kind": "implement from spec",
     "hive": {
       "name": "Claude Opus 5.5 + Claude Haiku 5.5",
-      "cost_usd": 1.0995584199999997,
+      "cost_usd": 0.19285801999999996,
       "passed": true,
-      "duration_ms": 316131,
-      "briefs": 12,
+      "duration_ms": 56398,
+      "briefs": 3,
       "returns": 0,
-      "review": {
-        "lenses": [
-          "goal",
-          "correctness",
-          "tests",
-          "arch",
-          "perf",
-          "rules",
-          "security"
-        ],
-        "rounds": 2,
-        "confirmed": 3,
-        "fixed": 3,
-        "dismissed": 5,
-        "suggestions": [
-          "return copies of cached profiles (shared mutable dicts)",
-          "TTLCache/ProfileService not thread-safe",
-          "O(n) expired scan on full-cache put and in len()",
-          "assert service default TTL; trim test duplication with acceptance; avoid private _entries in test",
-          "untrack __pycache__ and add .gitignore"
-        ],
-        "open": []
-      }
+      "review": null
     },
     "solo": [
       {
         "name": "Claude Sonnet 5.5",
-        "cost_usd": 0.1243998,
+        "cost_usd": 0.10796829999999999,
         "passed": true,
-        "duration_ms": 19896,
+        "duration_ms": 31082,
         "error": null
       },
       {
         "name": "Claude Opus 5.5",
-        "cost_usd": 0.4324232,
+        "cost_usd": 0.5875324,
         "passed": true,
-        "duration_ms": 81384,
+        "duration_ms": 108383,
         "error": null
       }
     ]

@@ -4,8 +4,8 @@ Each cell: hidden tests passed · regressions · cost · time.
 
 | Task | hive | Claude Sonnet 5.5 alone | Claude Opus 5.5 alone | hive light |
 |---|---|---|---|---|
-| invoices | 100% · 0 · $1.39 · 6.5m | 100% · 0 · $0.10 · 0.5m | 100% · 0 · $0.68 · 3.1m | 100% · 0 · $0.30 · 3.1m |
-| ledger | 100% · 0 · $1.08 · 4.5m | 100% · 0 · $0.07 · 0.2m | 100% · 0 · $0.23 · 0.9m | 100% · 0 · $0.17 · 1.0m |
-| report | 100% · 0 · $0.76 · 3.8m | 100% · 0 · $0.06 · 2.1m | 100% · 0 · $0.38 · 3.8m | 100% · 0 · $0.24 · 6.0m |
-| uploads | 100% · 0 · $1.21 · 4.9m | 100% · 0 · $0.07 · 0.3m | 100% · 0 · $0.19 · 0.7m | 100% · 0 · $0.21 · 1.9m |
-| **Total** | **4/4 correct · $4.43** · $1.11 per correct task | **4/4 correct · $0.30** · $0.08 per correct task | **4/4 correct · $1.47** · $0.37 per correct task | **4/4 correct · $0.92** · $0.23 per correct task |
+| invoices | 100% · 0 · $0.39 · 5.3m | 100% · 0 · $0.12 · 0.6m | 100% · 0 · $0.54 · 2.5m | 100% · 0 · $0.16 · 2.5m |
+| ledger | 100% · 0 · $0.21 · 1.3m | 100% · 0 · $0.07 · 0.2m | 100% · 0 · $0.19 · 0.8m | 100% · 0 · $0.09 · 1.0m |
+| report | 100% · 0 · $0.22 · 2.8m | 100% · 0 · $0.05 · 0.3m | 100% · 0 · $0.39 · 4.6m | 100% · 0 · $0.18 · 10.6m |
+| uploads | 100% · 0 · $0.21 · 1.3m | 100% · 0 · $0.08 · 0.3m | 100% · 0 · $0.26 · 1.1m | 100% · 0 · $0.09 · 0.8m |
+| **Total** | **4/4 correct · $1.03** · $0.26 per correct task | **4/4 correct · $0.32** · $0.08 per correct task | **4/4 correct · $1.37** · $0.34 per correct task | **4/4 correct · $0.52** · $0.13 per correct task |

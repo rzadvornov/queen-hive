@@ -2,8 +2,8 @@
   {
     "task": "invoices",
     "variant": "hive",
-    "cost_usd": 1.3912602,
-    "duration_ms": 391485,
+    "cost_usd": 0.38544560000000005,
+    "duration_ms": 319172,
     "error": null,
     "hidden": {
       "run": 7,
@@ -19,8 +19,8 @@
   {
     "task": "invoices",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.1020435,
-    "duration_ms": 29284,
+    "cost_usd": 0.1161742,
+    "duration_ms": 34684,
     "error": null,
     "hidden": {
       "run": 7,
@@ -36,8 +36,8 @@
   {
     "task": "invoices",
     "variant": "Claude Opus 5.5 alone",
-    "cost_usd": 0.68175,
-    "duration_ms": 184404,
+    "cost_usd": 0.5375458,
+    "duration_ms": 149771,
     "error": null,
     "hidden": {
       "run": 7,
@@ -53,8 +53,8 @@
   {
     "task": "invoices",
     "variant": "hive light",
-    "cost_usd": 0.298232115,
-    "duration_ms": 185098,
+    "cost_usd": 0.15838669,
+    "duration_ms": 151297,
     "error": null,
     "hidden": {
       "run": 7,
@@ -70,8 +70,8 @@
   {
     "task": "ledger",
     "variant": "hive",
-    "cost_usd": 1.0756177900000004,
-    "duration_ms": 268397,
+    "cost_usd": 0.20898402499999996,
+    "duration_ms": 75365,
     "error": null,
     "hidden": {
       "run": 7,
@@ -87,8 +87,8 @@
   {
     "task": "ledger",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.0675589,
-    "duration_ms": 13115,
+    "cost_usd": 0.0721193,
+    "duration_ms": 11891,
     "error": null,
     "hidden": {
       "run": 7,
@@ -104,8 +104,8 @@
   {
     "task": "ledger",
     "variant": "Claude Opus 5.5 alone",
-    "cost_usd": 0.22687939999999998,
-    "duration_ms": 51267,
+    "cost_usd": 0.18603419999999998,
+    "duration_ms": 48120,
     "error": null,
     "hidden": {
       "run": 7,
@@ -121,8 +121,8 @@
   {
     "task": "ledger",
     "variant": "hive light",
-    "cost_usd": 0.17338069499999995,
-    "duration_ms": 61210,
+    "cost_usd": 0.09134506499999998,
+    "duration_ms": 57486,
     "error": null,
     "hidden": {
       "run": 7,
@@ -138,8 +138,8 @@
   {
     "task": "report",
     "variant": "hive",
-    "cost_usd": 0.76182336,
-    "duration_ms": 227150,
+    "cost_usd": 0.2203130649999999,
+    "duration_ms": 166398,
     "error": null,
     "hidden": {
       "run": 5,
@@ -155,8 +155,8 @@
   {
     "task": "report",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.057969700000000006,
-    "duration_ms": 124062,
+    "cost_usd": 0.046937400000000004,
+    "duration_ms": 16776,
     "error": null,
     "hidden": {
       "run": 5,
@@ -172,8 +172,8 @@
   {
     "task": "report",
     "variant": "Claude Opus 5.5 alone",
-    "cost_usd": 0.3766976,
-    "duration_ms": 228419,
+    "cost_usd": 0.38920959999999993,
+    "duration_ms": 276331,
     "error": null,
     "hidden": {
       "run": 5,
@@ -189,8 +189,8 @@
   {
     "task": "report",
     "variant": "hive light",
-    "cost_usd": 0.23837581,
-    "duration_ms": 358322,
+    "cost_usd": 0.18208846499999995,
+    "duration_ms": 634986,
     "error": null,
     "hidden": {
       "run": 5,
@@ -206,8 +206,8 @@
   {
     "task": "uploads",
     "variant": "hive",
-    "cost_usd": 1.205730155,
-    "duration_ms": 291034,
+    "cost_usd": 0.211534655,
+    "duration_ms": 80008,
     "error": null,
     "hidden": {
       "run": 6,
@@ -223,8 +223,8 @@
   {
     "task": "uploads",
     "variant": "Claude Sonnet 5.5 alone",
-    "cost_usd": 0.0744918,
-    "duration_ms": 20065,
+    "cost_usd": 0.08128640000000001,
+    "duration_ms": 17285,
     "error": null,
     "hidden": {
       "run": 6,
@@ -240,8 +240,8 @@
   {
     "task": "uploads",
     "variant": "Claude Opus 5.5 alone",
-    "cost_usd": 0.18514000000000003,
-    "duration_ms": 43627,
+    "cost_usd": 0.2601752,
+    "duration_ms": 64040,
     "error": null,
     "hidden": {
       "run": 6,
@@ -257,8 +257,8 @@
   {
     "task": "uploads",
     "variant": "hive light",
-    "cost_usd": 0.21118051499999999,
-    "duration_ms": 116342,
+    "cost_usd": 0.09017298000000003,
+    "duration_ms": 50465,
     "error": null,
     "hidden": {
       "run": 6,

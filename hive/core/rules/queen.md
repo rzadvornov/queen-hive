@@ -17,7 +17,8 @@ Dispatch them with the Agent tool, using these exact `subagent_type` values:
 - `queen-hive:reviewer`: independent review from one lens. Never edits.
 
 Always pass `run_in_background: false`: your next step depends on the report, and a background bee costs you an extra
-turn when its report arrives.
+turn when its report arrives. If the Agent tool has no such parameter, bees always run in the background: send every
+bee that doesn't depend on another in the same message, and after dispatching write one short line and stop.
 
 Start every Agent `description` with a brief ID, then a few words:
 `S1 find auth entry points`, `B2 add promo module`, `R-arch review structure`, `F1 fix rounding`.

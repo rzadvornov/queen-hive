@@ -108,7 +108,9 @@ def finish(job: Job, pdir: Path, run_dir: Path, start, session_id: str, workspac
 def note_progress(pdir: Path, record: dict) -> None:
     """The job's line in progress.md (date · what was done · how it was verified), so the Queen needn't spend a turn
     on it."""
-    answer = [line.strip(" 👑-*") for line in (record.get("answer") or "").splitlines() if line.strip(" 👑-*")]
+    icons = " 👑🐝🔎🔨🧐→-*#"
+    answer = [line.strip(icons) for line in (record.get("answer") or "").splitlines()
+              if line.strip(icons) and not line.rstrip().endswith(":")]   # not a lead-in such as "S1 report:"
     done = (answer[0] if answer else record["goal"].splitlines()[0])[:200]
     checks = [f"`{r['command']}` {'OK' if r['ok'] else 'FAILED'}" for r in record["acceptance"]["results"]]
     review = (record.get("summary") or {}).get("review") or {}

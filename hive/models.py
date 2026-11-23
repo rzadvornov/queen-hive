@@ -183,7 +183,7 @@ def remember(state: dict, queen: Model, workers: Model) -> None:
 
 def _of(key: str | None, provider: str) -> Model | None:
     model = find(key) if key else None
-    return model if model and (model.provider == provider or (provider == "claude" and model.local)) else None
+    return model if model and (model.provider == provider or model.local) else None
 
 
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
@@ -302,7 +302,7 @@ async def check_access(keys: list[str] | None = None, provider: str = "claude") 
     """Probe models concurrently and cache the result in ~/.hive/state.json."""
     bees = DEFAULTS[provider][1]
     chosen = [get(k) for k in keys] if keys else [m for m in catalog(provider) if m.queen_effort or m.key == bees] + (
-        local_models() if provider == "claude" else [])
+        local_models())
     results = await asyncio.gather(*(probe(m) for m in chosen))
     state = memory.load_state()
     now = int(time.time())

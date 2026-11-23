@@ -21,7 +21,7 @@
 | Term | What it is |
 |---|---|
 | **👑 Queen** | The model you choose: Claude (Fable 5.1, Opus 5.5, Sonnet 5.5 …), GPT (GPT-5.5 …) or Gemini (Gemini 3.1 Pro …). It plans, writes briefs, checks results, runs the review and talks to you. It doesn't write code itself, except one- or two-line fixes. |
-| **🐝 Bees** | Cheap workers from the Queen's provider: Haiku 5.5, GPT-6 Luna or Gemini 3.5 Flash-Lite by default. Any bee can run on another model of that provider, and with Claude on a local one (§11). **scout** researches, **builder** makes changes and adds tests, and **reviewer** checks finished work. Scouts and reviewers are read-only, enforced by a hook (for GPT and Gemini, see §2). |
+| **🐝 Bees** | Cheap workers from the Queen's provider: Haiku 5.5, GPT-6 Luna or Gemini 3.5 Flash-Lite by default. Any bee can run on another model of that provider, or on a local one (§11). **scout** researches, **builder** makes changes and adds tests, and **reviewer** checks finished work. Scouts and reviewers are read-only, enforced by a hook (for GPT and Gemini, see §2). |
 | **Brief** | A task for one bee, at most 10 lines: *Goal / Read / Don't touch / Done when*. Each brief has an ID: `S1` (scout), `B2` (build), `R-arch` (review lens) or `F1` (fix after review). |
 | **Done when** | A runnable command plus the output it must show, such as `npm test shows 0 failures`. |
 | **Don't trust reports** | The Queen runs every Done-when check herself before accepting a brief. A failing brief goes back to a builder with the error output. **After 3 returns of the same brief she stops and asks you.** |
@@ -346,7 +346,7 @@ With GPT and Gemini there's nothing to install: `hive` generates the same rules,
 
 ### Local models
 
-Bees can run on a model on your own machine, served by Ollama (0.14+), llama.cpp or LM Studio through their Claude-compatible API. Local tokens cost nothing.
+Bees can run on a model on your own machine, served by Ollama (0.14+), llama.cpp or LM Studio, with any of the three providers. The server needs the API in the table below: Ollama serves all of them. Local tokens cost nothing.
 
 ```bash
 ollama serve                                   # in another terminal
@@ -355,10 +355,16 @@ hive models --check                            # sends one tiny request to the l
 hive "Map the payment flow" --scout qwen-coder
 ```
 
-Claude Code sends all requests to one address, so when a bee is local the hive starts a small router on localhost for the session. Claude requests pass through to Anthropic unchanged, with your login. Requests for the local model go to its server, without your login headers.
+Each CLI sends all its requests to one address, so when a bee is local the hive starts a small router on localhost for the session. Requests for the provider's models pass through unchanged, with your login. Requests for the local model go to its server, without your login headers:
+
+| CLI | The local server's API | What the router does |
+|---|---|---|
+| Claude Code | Anthropic Messages | passes the request on as it is |
+| Codex | OpenAI Responses | leaves out what only OpenAI's servers know (Codex's own items and app tools). Codex encrypts the Queen's messages to her bees, so the router has one of the provider's cheap bee models (GPT-6 Luna by default) repeat each message once, word for word, and gives the local bee that text: a few hundred tokens on your plan per brief. |
+| Gemini CLI | OpenAI chat completions | translates each Gemini request and answer. A sub-agent must end by calling `complete_task`; when a local model just answers, its answer becomes that call. |
 
 Things to know:
-- Anthropic doesn't support non-Claude models in Claude Code, so this can break with a Claude Code update.
+- None of the three vendors supports other models in their CLI, so this can break with a CLI update.
 - Small models often fail at tool use. Use a coding model of 14B or more, with a large context window.
 - Start with scouts, which are read-only. Keep reviewers on Claude, because the independent review is only worth as much as the reviewer.
 

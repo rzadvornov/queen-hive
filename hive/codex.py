@@ -103,6 +103,25 @@ def prepare(bees: dict) -> Path:
     return root
 
 
+def upstream() -> str:
+    """Where Codex sends its requests: the ChatGPT backend with a ChatGPT login, else the OpenAI API."""
+    if os.environ.get("OPENAI_BASE_URL"):
+        return os.environ["OPENAI_BASE_URL"]
+    try:
+        mode = json.loads((home() / "auth.json").read_text()).get("auth_mode")
+    except (OSError, ValueError, AttributeError):
+        mode = None
+    return "https://chatgpt.com/backend-api/codex" if mode == "chatgpt" else "https://api.openai.com/v1"
+
+
+def through(url: str) -> list[str]:
+    """Options that send a session's requests through the hive's router (local bees): a model provider of its own,
+    since a role can change a bee's model but not its provider."""
+    return ["-c", 'model_provider="hive"', "-c", 'model_providers.hive.name="hive"',
+            "-c", f"model_providers.hive.base_url={_toml(url)}", "-c", 'model_providers.hive.wire_api="responses"',
+            "-c", "model_providers.hive.requires_openai_auth=true"]
+
+
 def network(job) -> bool:
     """Codex's sandbox has no network unless asked: plan and auto mode get it, as in the other CLIs, so bees can
     install dependencies; ask mode and --sandbox keep it off."""

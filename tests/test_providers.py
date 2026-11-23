@@ -227,7 +227,7 @@ def test_gemini_command_and_home(tmp_path, fake_bin, monkeypatch, hive_home):
     assert settings["hooks"]["BeforeTool"][0]["matcher"] == "x"           # yours are kept
     assert "protect.py" in settings["hooks"]["BeforeTool"][1]["hooks"][0]["command"]
     scout = (root / "agents" / "scout.md").read_text()
-    assert "model: gemini-3-flash-preview" in scout and "write_file" not in scout and "kind: local" in scout
+    assert 'model: "gemini-3-flash-preview"' in scout and "write_file" not in scout and "kind: local" in scout
     assert "max_turns: 100" in scout and "timeout_mins: 30" in scout
     assert 'display_name: "\U0001f50e Scout bee"' in scout
     overrides = settings["modelConfigs"]["customOverrides"]

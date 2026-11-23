@@ -110,7 +110,7 @@ def _of_provider(key: str | None, provider: str, flag: str) -> models.Model | No
     if not key:
         return None
     model = _model(key, flag)
-    if model.provider != provider and not (model.local and provider == "claude"):
+    if model.provider != provider and not model.local:
         raise SystemExit(f"{flag} {model.key} is a {providers.PROVIDERS[model.provider].name} model, but this run uses "
                          f"{providers.PROVIDERS[provider].name}. Pick one of: "
                          f"{', '.join(m.key for m in models.catalog(provider))}, or add --provider {model.provider}.")
@@ -327,7 +327,7 @@ def _local_model(argv: list[str]) -> None:
     parser.add_argument("key", help="short name for --scout/--builder/--reviewer/--workers, e.g. qwen-coder")
     if argv[0] == "add":
         parser.add_argument("model_id", help="the model as the server names it, e.g. qwen2.5-coder:14b")
-        parser.add_argument("--url", default=models.OLLAMA_URL, help=f"Anthropic-compatible server (default {models.OLLAMA_URL})")
+        parser.add_argument("--url", default=models.OLLAMA_URL, help=f"the local server, with Anthropic and OpenAI APIs such as Ollama's (default {models.OLLAMA_URL})")
         parser.add_argument("--name", help="display name")
     args = parser.parse_args(argv[1:])
     if argv[0] == "remove":

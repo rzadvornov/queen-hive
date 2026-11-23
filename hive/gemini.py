@@ -116,7 +116,7 @@ def prepare(bees: dict, system: str = "", root: Path | None = None) -> Path:
         (root / "agents" / f"{name}.md").write_text(
             f"---\nname: {name}\ndisplay_name: {json.dumps(portable.display_name(name), ensure_ascii=False)}\n"
             f"description: {json.dumps(description)}\nkind: local\ntools:\n{tools}\n"
-            f"model: {bees[name].id}\n" + "".join(f"{key}: {value}\n" for key, value in BEE_LIMITS.items())
+            f"model: {json.dumps(bees[name].id)}\n" + "".join(f"{key}: {value}\n" for key, value in BEE_LIMITS.items())
             + f"---\n\n{instructions}\n")
     portable.export_skills(root / "skills")
     return root

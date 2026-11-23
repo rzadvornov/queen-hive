@@ -34,6 +34,7 @@ edit them there, not in a copy."""
 # A headless run has no breaks to keep its cache warm through, so it takes the 5-minute prompt cache: 1-hour cache
 # writes cost 2x input, 5-minute ones 1.25x. (On a Claude subscription Claude Code picks 1 hour by itself.)
 HEADLESS_CACHE_TTL = "5m"
+BASE_URL_ENV = {"claude": "ANTHROPIC_BASE_URL", "gemini": "GOOGLE_GEMINI_BASE_URL"}
 
 WAGGLE_NOTE = """
 After each finished job, right after its hive-summary block, run the `{skill}` skill for that job,
@@ -119,8 +120,17 @@ def run(job: Job, headless: bool = False) -> list[dict]:
                   + codex.TRUST_HINT.format(home=codex.home()))
     started = time.time()
     with contextlib.ExitStack() as stack:
-        if job.local_models():   # some bees run locally: Claude Code talks to the router, which splits the traffic
-            env["ANTHROPIC_BASE_URL"] = stack.enter_context(Router(job.local_models())).url
+        if job.local_models():   # some bees run locally: the CLI talks to the router, which splits the traffic
+            # Codex encrypts the Queen's messages to bees: a cheap model of hers reads them out for a local bee
+            reader = job.workers if not job.workers.local else models.get(models.DEFAULTS[job.provider][1])
+            url = stack.enter_context(Router(job.local_models(), provider=job.provider,
+                                             reader=reader.id if job.provider == "gpt" else None)).url
+            if job.provider == "gpt":
+                from hive import codex
+
+                argv[1:1] = codex.through(url)
+            else:
+                env[BASE_URL_ENV[job.provider]] = url
         _run(argv, target, env, run_dir, headless, job.provider)
     return finish(job, pdir, run_dir, start, session_id, workspaces, headless, memory_before, started)
 

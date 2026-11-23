@@ -99,3 +99,102 @@ def test_router_splits_claude_and_local_traffic():
     with Router({"qwen2.5-coder:14b": "http://127.0.0.1:9"}, upstream="http://127.0.0.1:9") as router:
         down = request(router.url, "qwen2.5-coder:14b")
         assert down.status_code == 502 and "unreachable" in down.json()["error"]["message"]
+
+
+def test_codex_local_bees_reach_the_servers_responses_api():
+    request = lambda url, model: httpx.post(url + "/responses", json={"model": model, "input": "hi"},
+                                            headers={"authorization": "Bearer chatgpt", "chatgpt-account-id": "acct"},
+                                            timeout=10).json()
+    with Serve(fake("openai")) as cloud, Serve(fake("local")) as local:
+        with Router({"qwen2.5-coder:14b": local.url}, upstream=cloud.url, provider="gpt") as router:
+            gpt = request(router.url, "gpt-6-luna")
+            assert gpt["who"] == "openai" and gpt["path"] == "/responses" and gpt["authorization"] == "Bearer chatgpt"
+            qwen = request(router.url, "qwen2.5-coder:14b")
+            assert qwen["who"] == "local" and qwen["path"] == "/v1/responses" and qwen["authorization"] is None
+
+
+def test_gemini_local_bees_are_translated_to_chat_completions():
+    seen = {}
+
+    async def completions(request):
+        seen.update(await request.json(), path=request.url.path, key=request.headers.get("x-goog-api-key"))
+        return JSONResponse({"choices": [{"finish_reason": "tool_calls", "message": {"content": "Reading it.", "tool_calls": [
+            {"id": "c1", "type": "function", "function": {"name": "read_file", "arguments": '{"path": "a.py"}'}}]}}],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 7}})
+
+    body = {"systemInstruction": {"parts": [{"text": "You are a scout."}]},
+            "contents": [{"role": "user", "parts": [{"text": "Find the bug"}]},
+                         {"role": "model", "parts": [{"text": "hmm", "thought": True},
+                                                     {"functionCall": {"name": "glob", "args": {"pattern": "*.py"}}}]},
+                         {"role": "user", "parts": [{"functionResponse": {"name": "glob", "response": {"output": "a.py"}}}]}],
+            "tools": [{"functionDeclarations": [
+                {"name": "glob", "parametersJsonSchema": {"type": "object", "properties": {"pattern": {"type": "string"}}}},
+                {"name": "read_file", "parameters": {"type": "OBJECT", "properties": {"path": {"type": "STRING"}}}}]}],
+            "generationConfig": {"temperature": 1, "thinkingConfig": {"thinkingLevel": "HIGH"}}}
+    local = Starlette(routes=[Route("/v1/chat/completions", completions, methods=["POST"])])
+    with Serve(fake("google", stream=True)) as cloud, Serve(local) as server:
+        with Router({"qwen2.5-coder:14b": server.url}, upstream=cloud.url, provider="gemini") as router:
+            path = "/v1beta/models/{}:streamGenerateContent?alt=sse"
+            gemini = httpx.post(router.url + path.format("gemini-3.5-flash-lite"), json=body,
+                                headers={"x-goog-api-key": "secret"}, timeout=10)
+            assert '"who": "google"' in gemini.text                                       # Gemini passes through
+            reply = httpx.post(router.url + path.format("qwen2.5-coder:14b"), json=body,
+                               headers={"x-goog-api-key": "secret"}, timeout=10)
+    assert seen["path"] == "/v1/chat/completions" and seen["key"] is None and seen["model"] == "qwen2.5-coder:14b"
+    assert [m["role"] for m in seen["messages"]] == ["system", "user", "assistant", "tool"]
+    call = seen["messages"][2]["tool_calls"][0]
+    assert seen["messages"][2]["content"] is None                                         # thoughts are left out
+    assert seen["messages"][3]["tool_call_id"] == call["id"] and json.loads(call["function"]["arguments"]) == {"pattern": "*.py"}
+    assert seen["tools"][1]["function"]["parameters"]["properties"]["path"]["type"] == "string"
+    event = json.loads(reply.text.strip()[len("data: "):])
+    parts = event["candidates"][0]["content"]["parts"]
+    assert parts[0] == {"text": "Reading it."} and parts[1]["functionCall"] == {"id": "c1", "name": "read_file", "args": {"path": "a.py"}}
+    assert event["usageMetadata"]["promptTokenCount"] == 50
+
+    from hive import translate
+
+    plain = {"choices": [{"message": {"content": "add: fine. mean: off by one."}}]}
+    finished = translate.to_gemini(plain, "qwen", translate.declared(
+        {"tools": [{"functionDeclarations": [{"name": "read_file"}, {"name": "complete_task"}]}]}))
+    assert finished["candidates"][0]["content"]["parts"] == [   # a sub-agent's plain last answer ends its task
+        {"functionCall": {"id": "finish", "name": "complete_task", "args": {"result": "add: fine. mean: off by one."}}}]
+    assert translate.to_gemini(plain, "qwen")["candidates"][0]["content"]["parts"] == [{"text": "add: fine. mean: off by one."}]
+
+
+def test_local_bees_for_every_provider(hive_home):
+    from hive import cli
+
+    models.add_local("qwen-coder", "qwen2.5-coder:14b")
+    for provider in ("claude", "gpt", "gemini"):
+        assert cli._of_provider("qwen-coder", provider, "--scout").local
+
+
+def test_codex_local_bees_get_the_queens_encrypted_message_read_out():
+    asked = []
+
+    async def responses(request):
+        body = await request.json()
+        asked.append((body, request.headers.get("authorization")))
+        if body["model"] == "gpt-6-luna":   # the reader, on the provider's servers
+            async def events():
+                for piece in ("Read calc.py ", "and report."):
+                    yield f"data: {json.dumps({'type': 'response.output_text.delta', 'delta': piece})}\n\n".encode()
+            return StreamingResponse(events(), media_type="text/event-stream")
+        return JSONResponse(body)
+
+    app = Starlette(routes=[Route("/{path:path}", responses, methods=["POST"])])
+    brief = {"type": "agent_message", "author": "/root", "content": [
+        {"type": "input_text", "text": "Payload:\n"}, {"type": "encrypted_content", "encrypted_content": "gAAA"}]}
+    body = {"model": "qwen2.5-coder:14b", "include": ["reasoning.encrypted_content"], "input": [
+        {"type": "message", "role": "developer", "content": [{"type": "input_text", "text": "You are a scout."}]},
+        {"type": "additional_tools", "tools": []}, brief, brief],
+        "tools": [{"type": "function", "name": "exec_command"}, {"type": "namespace", "name": "mcp__apps", "tools": []}]}
+    with Serve(app) as cloud, Serve(app) as local:
+        with Router({"qwen2.5-coder:14b": local.url}, upstream=cloud.url, provider="gpt", reader="gpt-6-luna") as router:
+            sent = httpx.post(router.url + "/responses", json=body, headers={"authorization": "Bearer chatgpt"},
+                              timeout=10).json()
+    assert [b["model"] for b, _ in asked] == ["gpt-6-luna", "qwen2.5-coder:14b"]   # read out once, then cached
+    assert asked[0][1] == "Bearer chatgpt" and asked[1][1] is None
+    assert [i["type"] for i in sent["input"]] == ["message", "message", "message"]
+    assert sent["input"][1]["content"][0]["text"] == "Payload:\nRead calc.py and report."
+    assert [t["name"] for t in sent["tools"]] == ["exec_command"] and "include" not in sent

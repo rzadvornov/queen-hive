@@ -212,7 +212,7 @@ If Codex keeps your login in the system keychain rather than in `~/.codex/auth.j
 | Your provider choice and last models | `~/.hive/state.json` |
 | The hive's Codex home (bees, hooks, skills, sessions; your login linked in) | `~/.hive/codex` |
 | The hive's Gemini home (one folder per session in `sessions/`, chat logs shared in `.gemini/tmp`) | `~/.hive/gemini` |
-| Your own prices and local models | `~/.hive/models.json` |
+| Your own prices and custom models | `~/.hive/models.json` |
 
 Your own `~/.codex` and `~/.gemini` are never edited. GPT and Gemini prices come from price trackers, not the providers' pages, and models a ChatGPT plan offers show as $0 because a plan isn't billed per token. Set your own prices in `~/.hive/models.json` (the numbers below are only an example):
 
@@ -237,7 +237,7 @@ Your own `~/.codex` and `~/.gemini` are never edited. GPT and Gemini prices come
 
 ## What you get
 
-- **Choose your AI and your Queen:** Claude (Fable 5.1, Opus 5.5, Sonnet 5.5 …), GPT (GPT-5.5, GPT-5.4 …, or your ChatGPT plan's models) or Gemini (Gemini 3.1 Pro, 3.8 Flash …). Any kind of bee can run on another model of the same provider (`--scout`, `--builder`, `--reviewer`). With any of the three, a bee can also run on a **local model** through Ollama, llama.cpp or LM Studio (`--scout qwen-coder`): a router on localhost sends only that bee's requests to it, and its tokens cost nothing.
+- **Choose your AI and your Queen:** Claude (Fable 5.1, Opus 5.5, Sonnet 5.5 …), GPT (GPT-5.5, GPT-5.4 …, or your ChatGPT plan's models) or Gemini (Gemini 3.1 Pro, 3.8 Flash …). Any kind of bee can run on another model of the same provider (`--scout`, `--builder`, `--reviewer`). **Custom models** work too: local servers (Ollama, LM Studio, llama.cpp, vLLM) and hosted APIs (OpenRouter, DeepSeek, Groq, Together …), as bees with any of the three CLIs and as Queen in Claude Code (`hive models add or-qwen qwen/qwen3-coder --via openrouter --queen`, then `--queen or-qwen`). A router on localhost sends only those models' requests to their endpoint, with their own API key.
 - **Runs in the CLI itself:** `hive` opens Claude Code, Codex or the Gemini CLI with the Queen's rules, the bees, the hooks and the skills loaded, then reports and records each job when you exit. Scripts and CI get a headless mode (`--headless`). In Claude Code there's also a `/queen-hive:hive` plugin command.
 - **👑 and 🐝 in the chat:** on every provider the Queen starts her messages with 👑 and names bees with their icon (🔎 scout, 🔨 builder, 🧐 reviewer), and bees start their reports with `🐝 <brief ID>`. The Gemini CLI shows bees as "🔎 Scout bee" and so on; Codex as "Scout bee" (it allows no emoji in names).
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
@@ -256,6 +256,6 @@ Your own `~/.codex` and `~/.gemini` are never edited. GPT and Gemini prices come
 - **Memory feeds every later session.** The Queen writes `known-issues.md`, `decisions.md` and `progress.md`, and they go into her instructions next time. The end-of-session report lists every line she added (📝), so you can catch an instruction planted by code you don't trust.
 - **`--compare` copies are contained.** Links that lead out of a copy are removed, and with `--sandbox` the solo models run sandboxed too.
 - **Only the Queen changes the hive.** Retro edits to the hive's rules and bees are applied by the Queen after you approve them; the protect hook denies any bee that tries (except in the Gemini CLI, which doesn't say which bee is calling).
-- **Everything stays local.** Memory, run logs and the dashboard never leave your machine, and `~/.hive` is owner-only. The dashboard listens on `127.0.0.1` and answers only its own pages, so other websites can't read it or trigger paid model checks. Local models get no login headers.
+- **Everything stays local.** Memory, run logs and the dashboard never leave your machine, and `~/.hive` is owner-only. The dashboard listens on `127.0.0.1` and answers only its own pages, so other websites can't read it or trigger paid model checks. Custom models never get your login headers, only their own key.
 
 📖 **Full guide: [docs/GUIDE.md](https://github.com/rzadvornov/queen-hive/blob/main/docs/GUIDE.md)**

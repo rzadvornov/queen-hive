@@ -21,7 +21,7 @@
 | Term | What it is |
 |---|---|
 | **👑 Queen** | The model you choose: Claude (Fable 5.1, Opus 5.5, Sonnet 5.5 …), GPT (GPT-5.5 …) or Gemini (Gemini 3.1 Pro …). It plans, writes briefs, checks results, runs the review and talks to you. It doesn't write code itself, except one- or two-line fixes. |
-| **🐝 Bees** | Cheap workers from the Queen's provider: Haiku 5.5, GPT-6 Luna or Gemini 3.5 Flash-Lite by default. Any bee can run on another model of that provider, or on a local one (§11). **scout** researches, **builder** makes changes and adds tests, and **reviewer** checks finished work. Scouts and reviewers are read-only, enforced by a hook (for GPT and Gemini, see §2). |
+| **🐝 Bees** | Cheap workers from the Queen's provider: Haiku 5.5, GPT-6 Luna or Gemini 3.5 Flash-Lite by default. Any bee can run on another model of that provider, or on a custom one: local or hosted, such as Ollama or OpenRouter (§11). **scout** researches, **builder** makes changes and adds tests, and **reviewer** checks finished work. Scouts and reviewers are read-only, enforced by a hook (for GPT and Gemini, see §2). |
 | **Brief** | A task for one bee, at most 10 lines: *Request / Goal / Read / Don't touch / Check*. Each brief has an ID: `S1` (scout), `B2` (build), `R-arch` (review lens) or `F1` (fix after review). |
 | **Check** | A runnable command plus the output it must show, such as `npm test → 0 failures`. |
 | **Don't trust reports** | The Queen runs every brief's Check herself before accepting it. A failing brief goes back to a builder with the error output. **After 3 returns of the same brief she stops and asks you.** |
@@ -213,7 +213,7 @@ The hive never commits. Review the changes with `git diff` and commit them yours
 | `--provider claude\|gpt\|gemini` | The AI for this run only (§2). |
 | `--headless` | Run without the CLI's interface and stop at the end. This is the default when there's no terminal. |
 | `--budget USD` | Hard cap for a headless Claude run, 5 by default. Each `--compare` model gets the same cap. Claude Code has no cap for interactive sessions, and Codex and the Gemini CLI have none at all. |
-| `--scout/--builder/--reviewer MODEL` | A model for one kind of bee only, for example a local model (§11). |
+| `--scout/--builder/--reviewer MODEL` | A model for one kind of bee only, for example a custom model (§11). |
 | `--sandbox` | Run shell commands in the CLI's sandbox. In Claude Code: writes only inside the granted folders and temp, network only to allowed domains, so installs may need approval. The Gemini CLI gets its own `--sandbox`. Codex always sandboxes commands to the granted folders, and `--sandbox` also turns off its network. |
 | `--no-init` | Don't draft a profile on first use. |
 | `--no-waggle` | Don't have the Queen run the retro after each finished job. |
@@ -227,8 +227,8 @@ The exit code is 0 when the last job finished and acceptance passed (or there wa
 | `hive review [TARGET]` | Opens your provider's CLI on an independent review of existing changes, without building anything: uncommitted changes by default, or a branch, a commit range, or a PR number. |
 | `hive waggle` / `hive retro` | Opens your provider's CLI with a retro of the project's last run: what went wrong, plus proposed minimal edits to the rules or memory. Nothing changes until you approve an item. |
 | `hive init [DIR] [--no-ai] [--force]` | Draft or redraft a project's profile. With Claude a Haiku scout reads the project; `--no-ai`, GPT and Gemini only read manifest files. |
-| `hive models [--check] [--provider P \| --all]` | Catalog, prices and your access for your provider (or all of them), local models included. |
-| `hive models add KEY MODEL_ID [--url URL]` / `hive models remove KEY` | Add or remove a local model (§11). |
+| `hive models [--check] [--provider P \| --all]` | Catalog, prices and your access for your provider (or all of them), custom models included. |
+| `hive models add KEY MODEL_ID [--via PRESET] [--queen] [--price IN/OUT]` / `hive models remove KEY` | Add or remove a custom model: local or hosted, for bees or as Queen (§11). |
 | `hive stats [DIR] [--last]` | Run history: cost, pass rate and average saving. `--last` reprints the last full report. |
 | `hive dashboard [up\|down\|status] [--port 7777] [--no-open] [--foreground]` | The web dashboard (§9). It runs as a background process; `hive dashboard down` stops it. |
 | `hive doctor` | The provider, each CLI's version and sign-in (and Codex's hook approval), plugin validation, a transcript check and warnings. |
@@ -344,29 +344,49 @@ With GPT and Gemini there's nothing to install: `hive` generates the same rules,
 
 `hive waggle` proposes edits to exactly these files after a session, so let the hive tune itself and approve what makes sense.
 
-### Local models
+### Custom models: local and hosted
 
-Bees can run on a model on your own machine, served by Ollama (0.14+), llama.cpp or LM Studio, with any of the three providers. The server needs the API in the table below: Ollama serves all of them. Local tokens cost nothing.
+Besides your provider's own models, the Queen and the bees can run on **custom models**: a server on your machine (Ollama 0.14+, LM Studio, llama.cpp, vLLM) or a hosted API such as OpenRouter, DeepSeek, Groq or Together. Add one with a short name; `--via` fills in the endpoint and the API key variable:
 
 ```bash
-ollama serve                                   # in another terminal
-hive models add qwen-coder qwen2.5-coder:14b   # --url for a server other than http://localhost:11434
-hive models --check                            # sends one tiny request to the local server
-hive "Map the payment flow" --scout qwen-coder
+hive models add qwen qwen3.6:27b-coding-nvfp4 --queen               # Ollama on this machine (the default)
+hive models add or-qwen qwen/qwen3-coder --via openrouter --queen --price 0.3/1.2
+hive models add groq-llama llama-3.3-70b-versatile --via groq
+hive models add mine my-model --openai-url https://host/api --key-env MY_KEY
+hive models --check                                                  # one tiny request to each endpoint
+hive "Fix the failing test" --queen or-qwen                          # a custom Queen, Claude's Haiku bees
+hive "Map the payment flow" --scout qwen                             # one kind of bee on a custom model
 ```
 
-Each CLI sends all its requests to one address, so when a bee is local the hive starts a small router on localhost for the session. Requests for the provider's models pass through unchanged, with your login. Requests for the local model go to its server, without your login headers:
+| `--via` | Anthropic API | OpenAI API | API key from |
+|---|---|---|---|
+| `ollama` (default) | http://localhost:11434 | http://localhost:11434 | – |
+| `lmstudio` | http://localhost:1234 | http://localhost:1234 | – |
+| `llamacpp` | – | http://localhost:8080 | – |
+| `vllm` | – | http://localhost:8000 | – |
+| `openrouter` | https://openrouter.ai/api | https://openrouter.ai/api | `$OPENROUTER_API_KEY` |
+| `deepseek` | https://api.deepseek.com/anthropic | https://api.deepseek.com | `$DEEPSEEK_API_KEY` |
+| `groq` | – | https://api.groq.com/openai | `$GROQ_API_KEY` |
+| `together` | – | https://api.together.xyz | `$TOGETHER_API_KEY` |
 
-| CLI | The local server's API | What the router does |
+- **Keys** are read from the environment variable at run time; only the variable's name is saved (in `~/.hive/models.json`). A run stops before starting if one is missing.
+- **Prices:** `--price IN/OUT[/CACHE]` in USD per million tokens, so reports and comparisons count them. Without one, a custom model's tokens show as $0.
+- **As Queen** (`--queen` when adding it): a custom Queen runs in Claude Code. Her bees can be Claude models (with your login) or custom ones. With no Claude model in the job at all, Claude Code needs no Anthropic login: its own background requests go to the Queen's endpoint too. `--compare` needs a Claude Queen.
+- **As bees:** with any of the three CLIs. Codex bees need an endpoint with the OpenAI Responses API (Ollama, LM Studio, vLLM, OpenRouter, Groq have it; Together doesn't).
+
+Each CLI sends all its requests to one address, so when a custom model is in the job the hive starts a small router on localhost for the session. Requests for the provider's models pass through unchanged, with your login. Requests for a custom model go to its endpoint without your login, with that model's own key:
+
+| CLI | The endpoint's API | What the router does |
 |---|---|---|
-| Claude Code | Anthropic Messages | passes the request on as it is |
-| Codex | OpenAI Responses | leaves out what only OpenAI's servers know (Codex's own items and app tools). Codex encrypts the Queen's messages to her bees, so the router has one of the provider's cheap bee models (GPT-6 Luna by default) repeat each message once, word for word, and gives the local bee that text: a few hundred tokens on your plan per brief. |
-| Gemini CLI | OpenAI chat completions | translates each Gemini request and answer. A sub-agent must end by calling `complete_task`; when a local model just answers, its answer becomes that call. |
+| Claude Code | Anthropic Messages, else OpenAI chat completions | passes an Anthropic request on as it is; for an endpoint with only an OpenAI API it translates each request and answer |
+| Codex | OpenAI Responses | leaves out what only OpenAI's servers know (Codex's own items and app tools). Codex encrypts the Queen's messages to her bees, so the router has one of the provider's cheap bee models (GPT-6 Luna by default) repeat each message once, word for word, and gives the custom bee that text: a few hundred tokens on your plan per brief. |
+| Gemini CLI | OpenAI chat completions | translates each Gemini request and answer. A sub-agent must end by calling `complete_task`; when a custom model just answers, its answer becomes that call. |
 
 Things to know:
-- None of the three vendors supports other models in their CLI, so this can break with a CLI update.
-- Small models often fail at tool use. Use a coding model of 14B or more, with a large context window.
-- Start with scouts, which are read-only. Keep reviewers on Claude, because the independent review is only worth as much as the reviewer.
+- None of the three vendors supports other models in their CLI, so this can break with a CLI update. Claude Code in particular is tuned for Claude: a Queen has to drive sub-agents through many exact tool calls, so pick a strong coding model with reliable tool use (Qwen3-Coder, DeepSeek, Kimi-class).
+- Small models often fail at tool use. Use a coding model of 14B or more.
+- **Context window:** Claude Code's own instructions are about 20k tokens. Ollama cuts longer prompts without saying so; `hive models --check` warns when a loaded model's window is under 32k (start Ollama with `OLLAMA_CONTEXT_LENGTH=65536`).
+- Start with scouts, which are read-only. Keep reviewers on a strong model, because the independent review is only worth as much as the reviewer.
 
 ## 12. Costs and safety
 
@@ -410,7 +430,7 @@ Plan and ask modes need a terminal. In scripts or CI, use `--mode auto`.
 - `~/.hive/state.json`: your provider, last Queen and bees per provider, mode, model access
 - `~/.hive/projects/<folder>-<hash>/`: memory and `runs/`
 - `~/.hive/codex`, `~/.hive/gemini`: the hive's Codex and Gemini homes (§2)
-- `~/.hive/models.json`: your own prices and local models
+- `~/.hive/models.json`: your own prices and custom models (endpoints and key variable names, never keys)
 
 Delete a project folder there to make the hive forget a project.
 

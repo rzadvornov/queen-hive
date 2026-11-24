@@ -145,7 +145,7 @@ def command(job, pdir: Path, system: str, session_id: str, headless: bool) -> tu
              "-c", f"sandbox_workspace_write.network_access={_toml(network(job))}",
              "-c", "agents.max_threads=5",
              "-c", "agents.max_depth=1"]
-    if job.queen.queen_effort:
+    if models.coordinating_effort(job.queen):
         argv += ["-c", f"model_reasoning_effort={_toml(models.coordinating_effort(job.queen))}"]
     if job.goal:
         argv += ["--", job.goal]

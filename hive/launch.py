@@ -64,7 +64,7 @@ def command(job: Job, pdir: Path, system: str, plugin: Path, session_id: str, in
         "--disallowedTools", "Agent(fork)",
         "--add-dir", *map(str, job.folders[1:]), str(pdir),
     ]
-    if job.queen.queen_effort:
+    if models.coordinating_effort(job.queen):
         argv += ["--effort", models.coordinating_effort(job.queen)]
     settings = {}
     if installed:
@@ -118,9 +118,12 @@ def run(job: Job, headless: bool = False) -> list[dict]:
         if not codex.hooks_trusted():
             print("⚠️  Codex doesn't run the hive's hooks yet, so protected paths aren't guarded and there's no live log: "
                   + codex.TRUST_HINT.format(home=codex.home()))
+    missing = models.missing_keys(list(job.local_models().values()))
+    if missing:
+        raise SystemExit(f"set {', '.join('$' + k for k in missing)} first: the API key(s) of your custom models.")
     started = time.time()
     with contextlib.ExitStack() as stack:
-        if job.local_models():   # some bees run locally: the CLI talks to the router, which splits the traffic
+        if job.local_models():   # custom models: the CLI talks to the router, which splits the traffic
             # Codex encrypts the Queen's messages to bees: a cheap model of hers reads them out for a local bee
             reader = job.workers if not job.workers.local else models.get(models.DEFAULTS[job.provider][1])
             url = stack.enter_context(Router(job.local_models(), provider=job.provider,
@@ -131,8 +134,17 @@ def run(job: Job, headless: bool = False) -> list[dict]:
                 argv[1:1] = codex.through(url)
             else:
                 env[BASE_URL_ENV[job.provider]] = url
+            if job.provider == "claude" and all(m.local for m in (job.queen, *job.bee_models().values())):
+                env.update(no_claude_env(job.queen))
         _run(argv, target, env, run_dir, headless, job.provider)
     return finish(job, pdir, run_dir, start, session_id, workspaces, headless, memory_before, started)
+
+
+def no_claude_env(queen: models.Model) -> dict[str, str]:
+    """Claude Code with no Claude model in the job: no Anthropic login needed, and its own background requests (titles,
+    summaries) go to the Queen's endpoint instead of Anthropic."""
+    return {"ANTHROPIC_AUTH_TOKEN": "hive-router", "ANTHROPIC_DEFAULT_HAIKU_MODEL": queen.id,
+            "ANTHROPIC_SMALL_FAST_MODEL": queen.id, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"}
 
 
 def _run(argv: list[str], target: Path, env: dict, run_dir: Path, headless: bool, provider: str = "claude") -> None:

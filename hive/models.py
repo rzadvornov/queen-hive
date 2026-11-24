@@ -1,12 +1,14 @@
-"""Model catalog: who can be Queen, what each model costs, local models, and access checks.
+"""Model catalog: who can be Queen, what each model costs, custom models, and access checks.
 
 Claude, GPT and Gemini models each run in their own provider's CLI (Claude Code, Codex, Gemini CLI),
-so a Queen and her bees always come from one provider.
+so a Queen and her bees always come from one provider. Custom models (OpenRouter, DeepSeek, Ollama, LM Studio …,
+added with `hive models add`) can be bees in any of them, and a Queen in Claude Code.
 """
 
 import asyncio
 import dataclasses
 import json
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -27,14 +29,23 @@ class Model:
     cache_read: float
     queen_effort: str | None = None   # None: not offered as Queen
     note: str = ""
-    base_url: str | None = None       # local models: their own Anthropic-compatible server, e.g. Ollama
+    base_url: str | None = None       # custom models: where they're served (their first API's root)
     provider: str = "claude"          # claude | gpt | gemini: the CLI that runs it
     priced_on: str = PRICES_AS_OF     # when its price was last checked
     review: str = "full"              # its default review level as Queen
+    anthropic_url: str | None = None  # custom models: root of an Anthropic Messages API (<root>/v1/messages)
+    openai_url: str | None = None     # custom models: root of an OpenAI API (<root>/v1/chat/completions, /v1/responses)
+    key_env: str | None = None        # custom models: the environment variable holding the API key
 
     @property
     def local(self) -> bool:
+        """A custom model (the name is from when they all ran on this machine): served by its own endpoint."""
         return self.base_url is not None
+
+    custom = local
+
+    def api_key(self) -> str | None:
+        return os.environ.get(self.key_env) if self.key_env else None
 
     def cache_write(self, ttl: str = "1h") -> float:
         """Cache writes cost 2x input for the 1-hour TTL (main sessions), 1.25x for 5 minutes (subagents)."""
@@ -77,17 +88,57 @@ DEFAULTS = {   # provider → (Queen, bees)
     "gemini": ("gemini-3.1-pro", "gemini-3.5-flash-lite"),
 }
 OLLAMA_URL = "http://localhost:11434"
+CUSTOM_QUEEN = "custom"   # queen_effort of a custom model allowed as Queen: no effort setting is sent
+# Where `hive models add --via NAME` finds a model: (Anthropic API root, OpenAI API root, API key variable)
+PRESETS: dict[str, tuple[str | None, str | None, str | None]] = {
+    "ollama": (OLLAMA_URL, OLLAMA_URL, None),
+    "lmstudio": ("http://localhost:1234", "http://localhost:1234", None),
+    "llamacpp": (None, "http://localhost:8080", None),
+    "vllm": (None, "http://localhost:8000", None),
+    "openrouter": ("https://openrouter.ai/api", "https://openrouter.ai/api", "OPENROUTER_API_KEY"),
+    "deepseek": ("https://api.deepseek.com/anthropic", "https://api.deepseek.com", "DEEPSEEK_API_KEY"),
+    "groq": (None, "https://api.groq.com/openai", "GROQ_API_KEY"),
+    "together": (None, "https://api.together.xyz", "TOGETHER_API_KEY"),
+}
 
 
 def local_path():
     return memory.hive_home() / "models.json"
 
 
+def _entries() -> list[dict]:
+    """The custom models in ~/.hive/models.json ("local" is where they were kept before)."""
+    settings = _settings()
+    entries = [*(settings.get("custom") or []), *(settings.get("local") or [])]
+    return [e for e in entries if isinstance(e, dict) and e.get("key") and e.get("id")]
+
+
+def _custom(entry: dict) -> Model:
+    old = entry.get("base_url")   # an entry from before: one server with both APIs, like Ollama
+    anthropic_url = entry.get("anthropic_url") or (old if old else None)
+    openai_url = entry.get("openai_url") or (old if old else None)
+    if not (anthropic_url or openai_url):
+        anthropic_url = openai_url = OLLAMA_URL
+    price = entry.get("price") if isinstance(entry.get("price"), dict) else {}
+    number = lambda k: float(price[k]) if isinstance(price.get(k), (int, float)) else 0.0
+    return Model(entry["key"], entry["id"], entry.get("name") or entry["id"], number("input"), number("output"),
+                 number("cache_read"), CUSTOM_QUEEN if entry.get("queen") else None, entry.get("note") or "custom",
+                 (anthropic_url or openai_url).rstrip("/"), anthropic_url=anthropic_url and anthropic_url.rstrip("/"),
+                 openai_url=openai_url and openai_url.rstrip("/"), key_env=entry.get("key_env") or None)
+
+
 def local_models() -> list[Model]:
-    """Models served on this machine (Ollama, llama.cpp, LM Studio …), from ~/.hive/models.json. They cost nothing."""
-    entries = _settings().get("local") or []
-    return [Model(e["key"], e["id"], e.get("name") or e["id"], 0.0, 0.0, 0.0, None, "local", e.get("base_url") or OLLAMA_URL)
-            for e in entries if isinstance(e, dict) and e.get("key") and e.get("id")] if isinstance(entries, list) else []
+    """Custom models from ~/.hive/models.json: local servers (Ollama, LM Studio, llama.cpp, vLLM …) and hosted APIs
+    (OpenRouter, DeepSeek, Groq …). Free unless you give them a price."""
+    seen, models = set(), []
+    for entry in _entries():
+        if entry["key"] not in seen:
+            seen.add(entry["key"])
+            models.append(_custom(entry))
+    return models
+
+
+custom_models = local_models
 
 
 def _settings() -> dict:
@@ -107,25 +158,58 @@ def price_overrides() -> dict[str, dict]:
 def save_local(entries: list[dict]) -> None:
     path = local_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({**_settings(), "local": entries}, indent=2, ensure_ascii=False) + "\n")
+    settings = {k: v for k, v in _settings().items() if k != "local"}
+    path.write_text(json.dumps({**settings, "custom": entries}, indent=2, ensure_ascii=False) + "\n")
 
 
-def add_local(key: str, model_id: str, base_url: str = OLLAMA_URL, name: str | None = None) -> Model:
+def _entry(model: Model) -> dict:
+    entry = {"key": model.key, "id": model.id, "name": model.name, "anthropic_url": model.anthropic_url,
+             "openai_url": model.openai_url, "key_env": model.key_env, "queen": bool(model.queen_effort)}
+    if model.input or model.output or model.cache_read:
+        entry["price"] = {"input": model.input, "output": model.output, "cache_read": model.cache_read}
+    return {k: v for k, v in entry.items() if v not in (None, False)}
+
+
+def add_local(key: str, model_id: str, base_url: str | None = None, name: str | None = None, *, via: str | None = None,
+              anthropic_url: str | None = None, openai_url: str | None = None, key_env: str | None = None,
+              queen: bool = False, price: tuple[float, float, float] | None = None) -> Model:
+    """Add (or replace) a custom model. --via picks a preset's URLs and key variable; explicit ones win.
+    base_url: one server with both APIs, as before."""
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", key):
         raise SystemExit(f"'{key}': use letters, digits, '.', '_' and '-' only (it becomes part of a folder name).")
     if any(m.key == key for m in CATALOG):
         raise SystemExit(f"'{key}' is a catalog model's key; pick another name.")
-    entries = [{"key": m.key, "id": m.id, "name": m.name, "base_url": m.base_url} for m in local_models() if m.key != key]
-    save_local([*entries, {"key": key, "id": model_id, "name": name or model_id, "base_url": base_url.rstrip("/")}])
+    if via and via not in PRESETS:
+        raise SystemExit(f"--via {via}: unknown. Known: {', '.join(PRESETS)}")
+    if via:
+        preset_anthropic, preset_openai, preset_key = PRESETS[via]
+    elif anthropic_url or openai_url or base_url:
+        preset_anthropic = preset_openai = preset_key = None
+    else:   # nothing said: Ollama on this machine
+        preset_anthropic, preset_openai, preset_key = PRESETS["ollama"]
+    if base_url:
+        preset_anthropic = preset_openai = base_url
+    anthropic_url, openai_url = anthropic_url or preset_anthropic, openai_url or preset_openai
+    entry = {"key": key, "id": model_id, "name": name or model_id, "anthropic_url": anthropic_url,
+             "openai_url": openai_url, "key_env": key_env or preset_key, "queen": queen}
+    if price:
+        entry["price"] = dict(zip(("input", "output", "cache_read"), price))
+    entries = [_entry(m) for m in local_models() if m.key != key]
+    save_local([*entries, {k: v for k, v in entry.items() if v not in (None, False)}])
     return get(key)
 
 
 def remove_local(key: str) -> bool:
-    """Forget a local model; False if there was none with that key."""
+    """Forget a custom model; False if there was none with that key."""
     current = local_models()
     kept = [m for m in current if m.key != key]
-    save_local([{"key": m.key, "id": m.id, "name": m.name, "base_url": m.base_url} for m in kept])
+    save_local([_entry(m) for m in kept])
     return len(kept) < len(current)
+
+
+def missing_keys(chosen: list[Model]) -> list[str]:
+    """The API key variables these custom models need that aren't set."""
+    return sorted({m.key_env for m in chosen if m.local and m.key_env and not os.environ.get(m.key_env)})
 
 
 def catalog(provider: str | None = None) -> list[Model]:
@@ -191,9 +275,10 @@ QUEEN_EFFORT_CAP = "high"   # coordinating needs less thinking than solving alon
 
 
 def coordinating_effort(model: Model) -> str | None:
-    """The Queen's effort: her model's own, at most QUEEN_EFFORT_CAP. A model alone keeps its full effort."""
+    """The Queen's effort: her model's own, at most QUEEN_EFFORT_CAP. A model alone keeps its full effort.
+    None for a custom Queen: her endpoint decides."""
     if not model.queen_effort or model.queen_effort not in EFFORTS:
-        return model.queen_effort
+        return None
     return EFFORTS[min(EFFORTS.index(model.queen_effort), EFFORTS.index(QUEEN_EFFORT_CAP))]
 
 
@@ -279,19 +364,44 @@ async def probe(model: Model) -> tuple[bool, str]:
     return True, ""
 
 
+MIN_CONTEXT = 32_000   # Claude Code's own instructions are ~20k tokens; Ollama cuts longer prompts without saying
+
+
 async def _probe_local(model: Model) -> tuple[bool, str]:
+    """A tiny request through the API the model has (Anthropic first), with its key. True with a note when it works
+    but Ollama gives it a context window too small for an agent."""
     import httpx
 
-    request = {"model": model.id, "max_tokens": 8, "messages": [{"role": "user", "content": "Reply with the single word OK."}]}
+    if model.key_env and not model.api_key():
+        return False, f"${model.key_env} isn't set"
+    key = model.api_key() or "local"
+    prompt = [{"role": "user", "content": "Reply with the single word OK."}]
+    if model.anthropic_url:
+        url, request = f"{model.anthropic_url}/v1/messages", {"model": model.id, "max_tokens": 8, "messages": prompt}
+    else:
+        url, request = f"{model.openai_url}/v1/chat/completions", {"model": model.id, "max_tokens": 8, "messages": prompt}
     try:
-        async with httpx.AsyncClient(timeout=300) as client:   # the first request loads the model into memory
-            response = await client.post(f"{model.base_url}/v1/messages", json=request,
-                                         headers={"x-api-key": "local", "anthropic-version": "2023-06-01"})
+        async with httpx.AsyncClient(timeout=300) as client:   # the first request may load the model into memory
+            response = await client.post(url, json=request, headers={
+                "x-api-key": key, "authorization": f"Bearer {key}", "anthropic-version": "2023-06-01"})
+            if response.status_code != 200:
+                return False, f"HTTP {response.status_code}: {response.text[:150]}"
+            return True, await _ollama_context_note(client, model)
     except httpx.HTTPError as error:
-        return False, f"{model.base_url} not reachable ({type(error).__name__}); is the server running?"
-    if response.status_code != 200:
-        return False, f"HTTP {response.status_code}: {response.text[:150]}"
-    return True, ""
+        return False, f"{url.split('/v1/')[0]} not reachable ({type(error).__name__}); is the server running?"
+
+
+async def _ollama_context_note(client, model: Model) -> str:
+    """Ollama lists loaded models with their context window; other servers don't have /api/ps."""
+    try:
+        response = await client.get(f"{model.base_url}/api/ps", timeout=5)
+        loaded = {m.get("name"): m.get("context_length") for m in response.json().get("models", [])}
+    except Exception:   # not Ollama, or an older one
+        return ""
+    size = loaded.get(model.id)
+    if isinstance(size, int) and size < MIN_CONTEXT:
+        return f"context window {size:,} tokens: too small, start Ollama with OLLAMA_CONTEXT_LENGTH=65536"
+    return ""
 
 
 SIGN_IN_ERRORS = re.compile(r"authenticat|IneligibleTier|api.?key|not logged in|log ?in|unauthori[sz]ed|credential|\b401\b",

@@ -77,7 +77,7 @@ def test_per_bee_models(tmp_path, hive_home):
     model_of = lambda bee: next(l for l in (plugin / "agents" / f"{bee}.md").read_text().splitlines() if l.startswith("model:"))
     assert model_of("scout") == "model: qwen2.5-coder:14b" and model_of("builder") == "model: claude-sonnet-5-5"
     assert model_of("reviewer") == "model: claude-haiku-5-5"
-    assert job.local_models() == {"qwen2.5-coder:14b": models.OLLAMA_URL}
+    assert {k: m.base_url for k, m in job.local_models().items()} == {"qwen2.5-coder:14b": models.OLLAMA_URL}
 
 
 def test_router_splits_claude_and_local_traffic():
@@ -92,7 +92,7 @@ def test_router_splits_claude_and_local_traffic():
             streamed = request(router.url, "qwen2.5-coder:14b")
             assert streamed.headers["content-type"].startswith("text/event-stream")
             seen = json.loads(streamed.text.strip().splitlines()[-1][len("data: "):])
-            assert seen["who"] == "local" and seen["authorization"] is None and seen["x-api-key"] == "local"   # no login leaks
+            assert seen["who"] == "local" and seen["authorization"] == "Bearer local" and seen["x-api-key"] == "local"   # no login leaks
 
             counted = request(router.url, "qwen2.5-coder:14b", "/v1/messages/count_tokens").json()
             assert counted["input_tokens"] > 0
@@ -110,7 +110,7 @@ def test_codex_local_bees_reach_the_servers_responses_api():
             gpt = request(router.url, "gpt-6-luna")
             assert gpt["who"] == "openai" and gpt["path"] == "/responses" and gpt["authorization"] == "Bearer chatgpt"
             qwen = request(router.url, "qwen2.5-coder:14b")
-            assert qwen["who"] == "local" and qwen["path"] == "/v1/responses" and qwen["authorization"] is None
+            assert qwen["who"] == "local" and qwen["path"] == "/v1/responses" and qwen["authorization"] == "Bearer local"
 
 
 def test_gemini_local_bees_are_translated_to_chat_completions():
@@ -194,7 +194,109 @@ def test_codex_local_bees_get_the_queens_encrypted_message_read_out():
             sent = httpx.post(router.url + "/responses", json=body, headers={"authorization": "Bearer chatgpt"},
                               timeout=10).json()
     assert [b["model"] for b, _ in asked] == ["gpt-6-luna", "qwen2.5-coder:14b"]   # read out once, then cached
-    assert asked[0][1] == "Bearer chatgpt" and asked[1][1] is None
+    assert asked[0][1] == "Bearer chatgpt" and asked[1][1] == "Bearer local"
     assert [i["type"] for i in sent["input"]] == ["message", "message", "message"]
     assert sent["input"][1]["content"][0]["text"] == "Payload:\nRead calc.py and report."
     assert [t["name"] for t in sent["tools"]] == ["exec_command"] and "include" not in sent
+
+
+def test_custom_models_from_presets_and_older_entries(hive_home, monkeypatch):
+    models.local_path().parent.mkdir(parents=True, exist_ok=True)
+    models.local_path().write_text(json.dumps({"local": [{"key": "old", "id": "qwen2.5-coder:14b",
+                                                          "base_url": "http://box:11434"}]}))
+    old = models.get("old")   # an entry from before custom models: one server with both APIs
+    assert old.anthropic_url == old.openai_url == "http://box:11434" and not old.queen_effort
+
+    routed = models.add_local("or-qwen", "qwen/qwen3-coder", via="openrouter", queen=True, price=(0.3, 1.2, 0.0))
+    assert routed.anthropic_url == routed.openai_url == "https://openrouter.ai/api" and routed.key_env == "OPENROUTER_API_KEY"
+    assert routed.queen_effort == models.CUSTOM_QUEEN and models.coordinating_effort(routed) is None   # no --effort sent
+    assert routed in models.queens("claude") and (routed.input, routed.output) == (0.3, 1.2)
+    groq = models.add_local("groq-llama", "llama-3.3-70b", via="groq")
+    assert groq.anthropic_url is None and groq.openai_url == "https://api.groq.com/openai"
+    mine = models.add_local("mine", "m", openai_url="https://host/api/", key_env="MY_KEY")
+    assert mine.anthropic_url is None and mine.openai_url == "https://host/api" and mine.key_env == "MY_KEY"
+    saved = json.loads(models.local_path().read_text())
+    assert "local" not in saved and [e["key"] for e in saved["custom"]] == ["old", "or-qwen", "groq-llama", "mine"]
+    assert "price" in saved["custom"][1] and saved["custom"][1]["queen"] is True
+
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setenv("MY_KEY", "k")
+    assert models.missing_keys([routed, mine, old]) == ["OPENROUTER_API_KEY"]
+    with pytest.raises(SystemExit):
+        models.add_local("x", "y", via="nowhere")
+
+
+def test_custom_queen_rules(tmp_path, hive_home, monkeypatch):
+    from hive import cli, launch
+
+    models.add_local("or-qwen", "qwen/qwen3-coder", via="openrouter", queen=True)
+    models.add_local("bee-only", "qwen2.5-coder:14b")
+    monkeypatch.setattr(launch, "run", lambda job, headless=False: seen.append(job) or [])
+    seen = []
+    base = ["x", "--headless", "-d", str(tmp_path), "--no-init", "--mode", "auto"]
+    for argv, error in ((["--queen", "or-qwen", "--provider", "gpt"], "runs in Claude Code"),
+                        (["--queen", "bee-only"], "--queen"),
+                        (["--queen", "or-qwen", "--workers", "haiku-5.5", "--compare", "sonnet-5.5", "--yes"], "--compare")):
+        with pytest.raises(SystemExit, match=error):
+            cli.cmd_run(base + argv)
+    with pytest.raises(SystemExit):
+        cli.cmd_run(base + ["--queen", "or-qwen", "--workers", "bee-only"])
+    job = seen[-1]
+    assert job.provider == "claude" and set(job.local_models()) == {"qwen/qwen3-coder", "qwen2.5-coder:14b"}
+    assert "You run on a custom model" in launch.queen_prompt(job, hive_home, None)
+    env = launch.no_claude_env(job.queen)
+    assert env["ANTHROPIC_SMALL_FAST_MODEL"] == "qwen/qwen3-coder" and env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] == "1"
+
+
+def test_anthropic_requests_translated_for_an_openai_only_endpoint(monkeypatch):
+    from hive import translate
+
+    seen = {}
+
+    async def completions(request):
+        seen.update(await request.json(), path=request.url.path, auth=request.headers.get("authorization"))
+        return JSONResponse({"choices": [{"finish_reason": "tool_calls", "message": {"content": "Reading.", "tool_calls": [
+            {"id": "c2", "type": "function", "function": {"name": "Read", "arguments": '{"file_path": "a.py"}'}}]}}],
+            "usage": {"prompt_tokens": 40, "completion_tokens": 6}})
+
+    body = {"model": "llama-3.3-70b", "stream": True, "max_tokens": 512,
+            "system": [{"type": "text", "text": "You are the Queen."}],
+            "tools": [{"name": "Read", "description": "read", "input_schema": {"type": "object"}},
+                      {"type": "web_search_20250305", "name": "web_search"}],
+            "messages": [{"role": "user", "content": "Fix it"},
+                         {"role": "assistant", "content": [{"type": "thinking", "thinking": "hm"},
+                                                           {"type": "tool_use", "id": "c1", "name": "Glob", "input": {"pattern": "*"}}]},
+                         {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "c1", "content": "a.py"},
+                                                      {"type": "text", "text": "go on"}]}]}
+    monkeypatch.setenv("GROQ_API_KEY", "secret-groq")
+    groq = lambda url: models.Model("groq", "llama-3.3-70b", "Llama", 0, 0, 0, base_url=url, openai_url=url,
+                                    key_env="GROQ_API_KEY")
+    local = Starlette(routes=[Route("/v1/chat/completions", completions, methods=["POST"])])
+    with Serve(fake("anthropic")) as cloud, Serve(local) as server:
+        with Router({"llama-3.3-70b": groq(server.url)}, upstream=cloud.url) as router:
+            reply = httpx.post(router.url + "/v1/messages?beta=true", json=body,
+                               headers={"authorization": "Bearer my-login"}, timeout=10)
+    assert seen["path"] == "/v1/chat/completions" and seen["auth"] == "Bearer secret-groq"   # its key, not my login
+    assert [m["role"] for m in seen["messages"]] == ["system", "user", "assistant", "tool", "user"]
+    assert seen["messages"][2]["tool_calls"][0]["id"] == "c1" and seen["messages"][3]["tool_call_id"] == "c1"
+    assert [t["function"]["name"] for t in seen["tools"]] == ["Read"] and seen["max_tokens"] == 512
+    events = [line[len("event: "):] for line in reply.text.splitlines() if line.startswith("event: ")]
+    assert events == ["message_start", "content_block_start", "content_block_delta", "content_block_stop",
+                      "content_block_start", "content_block_delta", "content_block_stop", "message_delta", "message_stop"]
+    data = [json.loads(line[6:]) for line in reply.text.splitlines() if line.startswith("data: ")]
+    assert data[4]["content_block"]["name"] == "Read" and json.loads(data[5]["delta"]["partial_json"]) == {"file_path": "a.py"}
+    assert data[7]["delta"]["stop_reason"] == "tool_use"
+    plain = translate.openai_to_anthropic({"choices": [{"finish_reason": "stop", "message": {"content": "Done."}}]}, "m")
+    assert plain["content"] == [{"type": "text", "text": "Done."}] and plain["stop_reason"] == "end_turn"
+
+
+def test_custom_anthropic_endpoint_gets_its_own_key(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or")
+    routed = lambda url: models.Model("or", "qwen/qwen3-coder", "Qwen", 0, 0, 0, base_url=url, anthropic_url=url,
+                                      openai_url=url, key_env="OPENROUTER_API_KEY")
+    with Serve(fake("anthropic")) as cloud, Serve(fake("openrouter")) as server:
+        with Router({"qwen/qwen3-coder": routed(server.url)}, upstream=cloud.url) as router:
+            got = httpx.post(router.url + "/v1/messages", json={"model": "qwen/qwen3-coder", "messages": []},
+                             headers={"authorization": "Bearer my-login"}, timeout=10).json()
+    assert got["who"] == "openrouter" and got["path"] == "/v1/messages"
+    assert got["authorization"] == "Bearer sk-or" and got["x-api-key"] == "sk-or"

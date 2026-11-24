@@ -1,11 +1,12 @@
-"""Route one hive session's API calls: the provider's models to its API, local models to their own server.
+"""Route one hive session's API calls: the provider's models to its API, custom models to their own endpoint.
 
-Each CLI sends every request to a single address. When some bees run on a local model, the hive points the
-CLI at this router on localhost. Requests for the provider's models pass through unchanged, login headers
-included; requests for a local model go to its server (Ollama, llama.cpp, LM Studio …) without them:
-- Claude Code (ANTHROPIC_BASE_URL): the server's Anthropic API, as is.
-- Codex (a custom model provider): the server's OpenAI Responses API, as is.
-- Gemini CLI (GOOGLE_GEMINI_BASE_URL): the server's chat completions, translated (hive.translate).
+Each CLI sends every request to a single address. When the Queen or a bee runs on a custom model (OpenRouter,
+DeepSeek, Ollama, LM Studio …), the hive points the CLI at this router on localhost. Requests for the provider's
+models pass through unchanged, login headers included. Requests for a custom model go to its endpoint without
+them, with that model's own API key (from the environment variable it names), if it has one:
+- Claude Code (ANTHROPIC_BASE_URL): the endpoint's Anthropic API as is, else its chat completions, translated.
+- Codex (a custom model provider): the endpoint's OpenAI Responses API, as is.
+- Gemini CLI (GOOGLE_GEMINI_BASE_URL): the endpoint's chat completions, translated (hive.translate).
 """
 
 import json
@@ -39,9 +40,24 @@ def upstream_for(provider: str) -> str:
     return os.environ.get("ANTHROPIC_BASE_URL") or ANTHROPIC
 
 
-def create_app(local: dict[str, str], upstream: str = ANTHROPIC, provider: str = "claude", reader: str | None = None) -> Starlette:
-    """local: model ID → base URL of the server that runs it. reader (Codex): the provider's model that reads the
-    Queen's encrypted messages out for a local bee."""
+def _endpoint(value):
+    """A custom model, or (as before) the URL of one server with both APIs."""
+    if isinstance(value, str):
+        from hive.models import Model
+
+        return Model("", "", "", 0, 0, 0, base_url=value, anthropic_url=value, openai_url=value)
+    return value
+
+
+def _auth(model) -> dict[str, str]:
+    key = model.api_key() or "local"
+    return {"x-api-key": key, "authorization": f"Bearer {key}"}
+
+
+def create_app(local: dict, upstream: str = ANTHROPIC, provider: str = "claude", reader: str | None = None) -> Starlette:
+    """local: model ID → the custom model (hive.models.Model) that serves it. reader (Codex): the provider's model that
+    reads the Queen's encrypted messages out for a custom bee."""
+    local = {model_id: _endpoint(value) for model_id, value in local.items()}
     client = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=30))
     decoded: dict[str, str] = {}
 
@@ -56,26 +72,33 @@ def create_app(local: dict[str, str], upstream: str = ANTHROPIC, provider: str =
                 model = json.loads(body).get("model")
             except (ValueError, AttributeError):
                 model = None
-        base = local.get(model) if model else None
+        custom = local.get(model) if model else None
+        base = None
         headers = {k: v for k, v in request.headers.items() if k.lower() not in HOP_BY_HOP}
-        if base:
+        if custom:
             if provider == "gemini":
-                return await gemini_local(client, base, model, found.group(2), body)
-            if path.endswith(("/count_tokens", "/responses/input_tokens")):   # not every local server has it
+                return await gemini_local(client, custom, model, found.group(2), body)
+            if path.endswith(("/count_tokens", "/responses/input_tokens")):   # not every endpoint has it
                 return JSONResponse({"input_tokens": max(1, len(body) // 4)})
-            headers = {k: v for k, v in headers.items() if k.lower() not in SECRETS}
-            headers["x-api-key"] = "local"
-            if provider == "gpt":   # Codex asks for <base_url>/responses; the server's OpenAI API is under /v1
-                path = "/v1" + path
+            headers = {**{k: v for k, v in headers.items() if k.lower() not in SECRETS}, **_auth(custom)}
+            if provider == "gpt":   # Codex asks for <base_url>/responses; the endpoint's OpenAI API is under /v1
+                base, path = custom.openai_url, "/v1" + path
                 if path.endswith("/responses"):
                     body = json.dumps(await codex_local(json.loads(body), dict(request.headers), client, upstream,
                                                         reader, decoded)).encode()
+            elif custom.anthropic_url:
+                base = custom.anthropic_url
+            else:   # Claude Code, and the endpoint has only an OpenAI API
+                return await anthropic_via_chat(client, custom, model, body)
+            if not base:
+                return JSONResponse({"type": "error", "error": {"type": "api_error", "message": f"hive router: "
+                                     f"{model} has no OpenAI API URL, which Codex needs"}}, status_code=400)
         target = (base or upstream).rstrip("/") + path + (f"?{request.url.query}" if request.url.query else "")
         upstream_request = client.build_request(request.method, target, headers=headers, content=body)
         try:
             response = await client.send(upstream_request, stream=True)
         except httpx.HTTPError as error:
-            where = f"local model server {base}" if base else upstream
+            where = base or upstream
             return JSONResponse({"type": "error", "error": {"type": "api_error", "message": f"hive router: {where} "
                                                             f"unreachable ({type(error).__name__})"}}, status_code=502)
         passed = {k: v for k, v in response.headers.items() if k.lower() not in HOP_BY_HOP}
@@ -149,10 +172,39 @@ async def read_out(item: dict, part: dict, headers: dict, client: httpx.AsyncCli
     return "".join(text) or "(the Queen's message couldn't be read)"
 
 
-async def gemini_local(client: httpx.AsyncClient, base: str, model: str, method: str, body: bytes) -> Response:
-    """A Gemini API call answered by a local model's chat completions."""
+async def chat(client: httpx.AsyncClient, custom, request: dict) -> httpx.Response:
+    return await client.post(custom.openai_url.rstrip("/") + "/v1/chat/completions", json=request, headers=_auth(custom))
+
+
+async def anthropic_via_chat(client: httpx.AsyncClient, custom, model: str, body: bytes) -> Response:
+    """A Claude Code request answered by the endpoint's chat completions."""
     from hive import translate
 
+    try:
+        request = json.loads(body or b"{}")
+        answer = await chat(client, custom, translate.anthropic_to_openai(request, model))
+    except ValueError:
+        return JSONResponse({"type": "error", "error": {"type": "invalid_request_error", "message": "not JSON"}}, 400)
+    except httpx.HTTPError as error:
+        return JSONResponse({"type": "error", "error": {"type": "api_error", "message": f"hive router: "
+                             f"{custom.openai_url} unreachable ({type(error).__name__})"}}, status_code=502)
+    if answer.status_code != 200:
+        return JSONResponse({"type": "error", "error": {"type": "api_error", "message": f"{model}: {answer.text[:500]}"}},
+                            status_code=answer.status_code)
+    message = translate.openai_to_anthropic(answer.json(), model)
+    if request.get("stream"):
+        return Response(translate.anthropic_events(message), media_type="text/event-stream")
+    return JSONResponse(message)
+
+
+async def gemini_local(client: httpx.AsyncClient, custom, model: str, method: str, body: bytes) -> Response:
+    """A Gemini API call answered by a custom model's chat completions."""
+    base = custom.openai_url
+    from hive import translate
+
+    if not base:
+        return JSONResponse({"error": {"code": 400, "status": "FAILED_PRECONDITION", "message": f"hive router: {model} "
+                                       "has no OpenAI API URL, which Gemini CLI bees need"}}, status_code=400)
     try:
         request = json.loads(body or b"{}")
     except ValueError:
@@ -160,14 +212,13 @@ async def gemini_local(client: httpx.AsyncClient, base: str, model: str, method:
     if method == "countTokens":
         return JSONResponse({"totalTokens": max(1, len(body) // 4)})
     try:
-        answer = await client.post(base.rstrip("/") + "/v1/chat/completions", json=translate.to_openai(request, model),
-                                   headers={"authorization": "Bearer local"})
+        answer = await chat(client, custom, translate.to_openai(request, model))
     except httpx.HTTPError as error:
-        return JSONResponse({"error": {"code": 502, "status": "UNAVAILABLE", "message": f"hive router: local model "
-                                       f"server {base} unreachable ({type(error).__name__})"}}, status_code=502)
+        return JSONResponse({"error": {"code": 502, "status": "UNAVAILABLE", "message": f"hive router: "
+                                       f"{base} unreachable ({type(error).__name__})"}}, status_code=502)
     if answer.status_code != 200:
         return JSONResponse({"error": {"code": answer.status_code, "status": "INTERNAL",
-                                       "message": f"local model server: {answer.text[:500]}"}}, status_code=answer.status_code)
+                                       "message": f"{model}: {answer.text[:500]}"}}, status_code=answer.status_code)
     reply = translate.to_gemini(answer.json(), model, translate.declared(request))
     if method == "streamGenerateContent":   # the whole answer as one event
         return Response(f"data: {json.dumps(reply, ensure_ascii=False)}\r\n\r\n", media_type="text/event-stream")

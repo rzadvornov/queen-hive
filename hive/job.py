@@ -52,9 +52,9 @@ class Job:
     def provider(self) -> str:
         return self.queen.provider
 
-    def local_models(self) -> dict[str, str]:
-        """Local model ID → its server, for the bees that run on one."""
-        return {m.id: m.base_url for m in self.bee_models().values() if m.local}
+    def local_models(self) -> dict[str, models.Model]:
+        """Custom model ID → the model, for the Queen and the bees that run on one."""
+        return {m.id: m for m in (self.queen, *self.bee_models().values()) if m.local}
 
 
 def plugin_for(bees: dict[str, models.Model]) -> Path:
@@ -82,8 +82,10 @@ def queen_prompt(job: Job, pdir: Path, start: StartPoint | None) -> str:
         f"- Worker bees run on {job.workers.name}.",
         f'- Check command: `python3 "{CORE_DIR / "scripts" / "check.py"}" "<command>"` (add `--lines 15` before the command '
         "for more output).",
-        *[f"- The {bee} bee runs on {model.name}, a local model: keep its briefs short and explicit, and check its work "
-          "with extra care." for bee, model in job.roles.items() if model.local],
+        *[f"- The {bee} bee runs on {model.name}, a custom model: keep its briefs short and explicit, and check its "
+          "work with extra care." for bee, model in job.roles.items() if model.local],
+        "- You run on a custom model, not Claude: keep every tool call simple and its arguments exact, one step at a "
+        "time." if job.queen.local else "",
         f"- {start.instructions()}" if start else "",
         f"- Review: {REVIEW_LEVELS[job.review]}",
         f"- Use exactly these review lenses: {', '.join(job.lenses)}." if job.lenses and job.review != "off" else "",

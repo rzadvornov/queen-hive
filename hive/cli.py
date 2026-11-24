@@ -42,7 +42,7 @@ def _job_args(parser: argparse.ArgumentParser) -> None:
                                                         f"cheapest ({', '.join(w for _, w in models.DEFAULTS.values())}).")
     parser.add_argument("--mode", choices=list(MODES), help="autonomy mode. Default: the last one.")
     for bee in ("scout", "builder", "reviewer"):
-        parser.add_argument(f"--{bee}", metavar="MODEL", help=f"model for the {bee} bees only, e.g. a local model "
+        parser.add_argument(f"--{bee}", metavar="MODEL", help=f"model for the {bee} bees only, e.g. a custom model "
                                                               "from `hive models add` (default: the bee model).")
     parser.add_argument("--review", choices=["full", "light", "off"],
                         help="independent review level. Default: the Queen's own, full for most, light for Sonnet 5.5.")
@@ -67,6 +67,12 @@ def _choose(args, goal: str = "", ask_folder: bool = False, save: bool = True):
     from hive.modes import DEFAULT_MODE, choose_mode
 
     provider = providers.current(args.provider or (_model(args.queen, "--queen").provider if args.queen else None))
+    custom_queen = _model(args.queen, "--queen") if args.queen and _model(args.queen, "--queen").local else None
+    if custom_queen and not custom_queen.queen_effort:
+        raise SystemExit(f"--queen {custom_queen.key}: add it as a possible Queen first: "
+                         f"`hive models add {custom_queen.key} {custom_queen.id} … --queen`.")
+    if custom_queen and provider != "claude":
+        raise SystemExit("a custom Queen runs in Claude Code for now: drop --provider or use --provider claude.")
     if provider != "claude":
         providers.binary(provider)   # fail early, with how to install it
     named = args.dir or folders_mod.folders_in(goal)
@@ -144,8 +150,8 @@ def cmd_run(argv: list[str]) -> None:
     if args.compare and not args.goal:
         parser.error("--compare needs a goal")
     folders, queen, workers, mode = _choose(args, args.goal, ask_folder=not headless, save=not headless)
-    if args.compare and queen.provider != "claude":
-        raise SystemExit("--compare runs Claude models only for now.")
+    if args.compare and (queen.provider != "claude" or queen.local):
+        raise SystemExit("--compare runs with a Claude Queen only for now.")
     roles = _roles(args, queen.provider)
     if headless and mode != "auto":
         print(f"🛡  headless: nobody can approve a plan or a risky action, so mode {mode} runs as auto"
@@ -265,7 +271,7 @@ def cmd_models(argv: list[str]) -> None:
     if argv[:1] in (["add"], ["remove"]):
         return _local_model(argv)
     parser = argparse.ArgumentParser(prog="hive models", description="Model catalog, prices and your access.",
-                                     epilog="local models: hive models add KEY MODEL_ID [--url URL] · hive models remove KEY")
+                                     epilog="custom models (local or hosted): hive models add KEY MODEL_ID [--via PRESET] [--queen] · hive models remove KEY")
     parser.add_argument("--check", action="store_true", help="probe each model with a tiny request (costs a fraction of a cent).")
     parser.add_argument("--provider", choices=list(providers.PROVIDERS), help="this provider's models (default: your saved one).")
     parser.add_argument("--all", action="store_true", help="every provider's models.")
@@ -282,12 +288,13 @@ def cmd_models(argv: list[str]) -> None:
         p = providers.PROVIDERS[key]
         queen = models.remembered(state, key)[0]
         print(f"\n{p.name} ({p.product}) · last Queen: {queen.name} · {models.prices_note(key)}")
-        print(f"{'model':22} {'id':24} {'in/out $/M':12} {'role':10} access")
+        print(f"{'model':22} {'id':24} {'in/out $/M':12} {'role':14} access")
         for m in models.catalog(key):
             entry = fresh.get(m.key) or models.access(state).get(m.key)
-            access = "not checked" if entry is None else "✅" if entry["ok"] else f"✗ {entry.get('error', '')[:50]}"
-            role = "queen" if m.queen_effort else "local bees" if m.local else "bees"
-            print(f"{m.key:22} {m.id:24} {f'{m.input:g}/{m.output:g}':12} {role:10} {access}")
+            access = "not checked" if entry is None else (f"✅ {entry.get('error') or ''}".strip() if entry["ok"]
+                                                          else f"✗ {entry.get('error', '')[:50]}")
+            role = (("queen" if m.queen_effort else "bees") + (" (custom)" if m.local else ""))
+            print(f"{m.key:22} {m.id:24} {f'{m.input:g}/{m.output:g}':12} {role:14} {access}")
         signed_out = next((e["error"] for k, e in fresh.items() if not e["ok"] and models.SIGN_IN_ERRORS.search(e["error"])
                            and models.find(k) and models.find(k).provider == key), None)
         if signed_out:   # the table cuts errors short; this one says what to do
@@ -323,19 +330,46 @@ def cmd_provider(argv: list[str]) -> None:
 
 
 def _local_model(argv: list[str]) -> None:
-    parser = argparse.ArgumentParser(prog=f"hive models {argv[0]}", description="Add or remove a local model for bees.")
-    parser.add_argument("key", help="short name for --scout/--builder/--reviewer/--workers, e.g. qwen-coder")
+    parser = argparse.ArgumentParser(
+        prog=f"hive models {argv[0]}", formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Add or remove a custom model: a local server (Ollama, LM Studio, llama.cpp, vLLM) or a hosted API "
+                    "(OpenRouter, DeepSeek, Groq, Together …), for bees or, with --queen, as Queen.",
+        epilog="examples:\n  hive models add qwen qwen3.6:27b-coding-nvfp4                  # Ollama on this machine\n"
+               "  hive models add or-qwen qwen/qwen3-coder --via openrouter --queen --price 0.3/1.2\n"
+               "  hive models add mine my-model --openai-url https://host/api --key-env MY_KEY")
+    parser.add_argument("key", help="short name for --queen/--workers/--scout/--builder/--reviewer, e.g. qwen-coder")
     if argv[0] == "add":
-        parser.add_argument("model_id", help="the model as the server names it, e.g. qwen2.5-coder:14b")
-        parser.add_argument("--url", default=models.OLLAMA_URL, help=f"the local server, with Anthropic and OpenAI APIs such as Ollama's (default {models.OLLAMA_URL})")
+        parser.add_argument("model_id", help="the model as the endpoint names it, e.g. qwen2.5-coder:14b or qwen/qwen3-coder")
+        parser.add_argument("--via", choices=list(models.PRESETS),
+                            help="where it's served: sets the URLs and the API key variable (default: ollama)")
+        parser.add_argument("--anthropic-url", help="root of an Anthropic Messages API (<url>/v1/messages)")
+        parser.add_argument("--openai-url", help="root of an OpenAI-compatible API (<url>/v1/chat/completions)")
+        parser.add_argument("--url", help="one server with both APIs (as Ollama has)")
+        parser.add_argument("--key-env", metavar="VAR", help="environment variable with the API key (the key itself is never saved)")
+        parser.add_argument("--queen", action="store_true", help="it can also be the Queen (in Claude Code)")
+        parser.add_argument("--price", metavar="IN/OUT[/CACHE]", help="USD per million tokens, e.g. 0.3/1.2 (default: free)")
         parser.add_argument("--name", help="display name")
     args = parser.parse_args(argv[1:])
     if argv[0] == "remove":
-        print(f"removed {args.key}" if models.remove_local(args.key) else f"no local model called {args.key}")
+        print(f"removed {args.key}" if models.remove_local(args.key) else f"no custom model called {args.key}")
         return
-    model = models.add_local(args.key, args.model_id, args.url, args.name)
-    print(f"added {model.key}: {model.id} at {model.base_url}. Check it with `hive models --check`, "
-          f"then use it with e.g. `--scout {model.key}`.")
+    price = None
+    if args.price:
+        try:
+            numbers = [float(v) for v in args.price.split("/")]
+        except ValueError:
+            parser.error("--price: numbers like 0.3/1.2 or 0.3/1.2/0.03")
+        if not 2 <= len(numbers) <= 3:
+            parser.error("--price: input/output, optionally /cache_read")
+        price = (numbers[0], numbers[1], numbers[2] if len(numbers) == 3 else 0.0)
+    model = models.add_local(args.key, args.model_id, args.url, args.name, via=args.via, anthropic_url=args.anthropic_url,
+                             openai_url=args.openai_url, key_env=args.key_env, queen=args.queen, price=price)
+    apis = ", ".join(f"{kind} API at {url}" for kind, url in (("Anthropic", model.anthropic_url), ("OpenAI", model.openai_url)) if url)
+    print(f"added {model.key}: {model.id} ({apis})" + (f", key from ${model.key_env}" if model.key_env else "") + ".")
+    if model.key_env and not model.api_key():
+        print(f"   ${model.key_env} isn't set in this shell yet.")
+    use = f"--queen {model.key}" if model.queen_effort else f"--scout {model.key}"
+    print(f"   Check it with `hive models --check`, then use it with e.g. `{use}`.")
 
 
 def cmd_stats(argv: list[str]) -> None:

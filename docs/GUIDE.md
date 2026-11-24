@@ -5,7 +5,7 @@
 3. [Your first run](#3-your-first-run)
 4. [Commands and flags](#4-commands-and-flags)
 5. [Choosing a Queen and a mode](#5-choosing-a-queen-and-a-mode)
-6. [Writing good goals and Done-when checks](#6-writing-good-goals-and-done-when-checks)
+6. [Writing good goals and checks](#6-writing-good-goals-and-checks)
 7. [Any stack, any language, non-coding work](#7-any-stack-any-language-non-coding-work)
 8. [Reading the statistics](#8-reading-the-statistics)
 9. [The dashboard](#9-the-dashboard)
@@ -22,9 +22,9 @@
 |---|---|
 | **👑 Queen** | The model you choose: Claude (Fable 5.1, Opus 5.5, Sonnet 5.5 …), GPT (GPT-5.5 …) or Gemini (Gemini 3.1 Pro …). It plans, writes briefs, checks results, runs the review and talks to you. It doesn't write code itself, except one- or two-line fixes. |
 | **🐝 Bees** | Cheap workers from the Queen's provider: Haiku 5.5, GPT-6 Luna or Gemini 3.5 Flash-Lite by default. Any bee can run on another model of that provider, or on a local one (§11). **scout** researches, **builder** makes changes and adds tests, and **reviewer** checks finished work. Scouts and reviewers are read-only, enforced by a hook (for GPT and Gemini, see §2). |
-| **Brief** | A task for one bee, at most 10 lines: *Goal / Read / Don't touch / Done when*. Each brief has an ID: `S1` (scout), `B2` (build), `R-arch` (review lens) or `F1` (fix after review). |
-| **Done when** | A runnable command plus the output it must show, such as `npm test shows 0 failures`. |
-| **Don't trust reports** | The Queen runs every Done-when check herself before accepting a brief. A failing brief goes back to a builder with the error output. **After 3 returns of the same brief she stops and asks you.** |
+| **Brief** | A task for one bee, at most 10 lines: *Request / Goal / Read / Don't touch / Check*. Each brief has an ID: `S1` (scout), `B2` (build), `R-arch` (review lens) or `F1` (fix after review). |
+| **Check** | A runnable command plus the output it must show, such as `npm test → 0 failures`. |
+| **Don't trust reports** | The Queen runs every brief's Check herself before accepting it. A failing brief goes back to a builder with the error output. **After 3 returns of the same brief she stops and asks you.** |
 | **Independent review** | After the work is accepted, several reviewer bees check it in parallel, one *lens* each. They see only the goal, the change set and the project memory, **not** the builders' reports. The Queen triages every finding: false positives are dismissed with a reason, real defects get fix briefs, and opinions come to you as suggestions. At most 2 review rounds. |
 | **Protected paths** | Files the hive must never change, typically your acceptance tests. A hook blocks every edit to them; reading and running them is fine. |
 | **Project memory** | `~/.hive/projects/<folder>-<hash>/`: `profile.md` (stack, commands, protected paths), `progress.md`, `decisions.md`, `known-issues.md`, `retro-log.md` (retro proposals you approved or rejected) and `runs/`. **Nothing is written into your project.** |
@@ -33,7 +33,7 @@
 What a run looks like:
 
 ```
-you ──goal──▶ 👑 Queen ──briefs──▶ 🐝 builders/scouts ──reports──▶ 👑 re-runs each Done when
+you ──goal──▶ 👑 Queen ──briefs──▶ 🐝 builders/scouts ──reports──▶ 👑 re-runs each Check
                                                                          │
                        you ◀──summary + stats── 👑 triage ◀── 🐝 reviewers (in parallel, one lens each)
 ```
@@ -258,7 +258,7 @@ With GPT and Gemini the same idea holds: a strong Queen (GPT-5.5, or your ChatGP
 
 In every mode, edits outside the granted folders are refused (`ask` asks you instead), and protected paths can never be changed.
 
-## 6. Writing good goals and Done-when checks
+## 6. Writing good goals and checks
 
 - **Say what "done" means.** The best goals come with a check: `--done "npm test"`, `--done "go test ./..."`, or a human-written acceptance test in a protected folder. This is the single most effective thing you can do.
 - **Point at specs.** `"Do task 3 from docs/backlog.md"` works well when the spec lives in the repo.
@@ -269,7 +269,7 @@ In every mode, edits outside the granted folders are refused (`ask` asks you ins
 
 ## 7. Any stack, any language, non-coding work
 
-- **Stacks:** `hive init` detects package.json (npm/yarn/pnpm), pyproject/requirements, go.mod, Cargo.toml, pom.xml, Gradle, .csproj/.sln, Gemfile, composer.json, mix.exs, deno.json, pubspec.yaml, Package.swift, CMake and Makefile targets. Then a scout refines the commands by reading CI configs and READMEs. The Queen uses those commands in every Done when.
+- **Stacks:** `hive init` detects package.json (npm/yarn/pnpm), pyproject/requirements, go.mod, Cargo.toml, pom.xml, Gradle, .csproj/.sln, Gemfile, composer.json, mix.exs, deno.json, pubspec.yaml, Package.swift, CMake and Makefile targets. Then a scout refines the commands by reading CI configs and READMEs. The Queen uses those commands in every Check.
 - **Human languages:** goals in Russian, English or any other language get answers in the same language. Code follows the project's conventions.
 - **Research:** `hive "Compare the three auth libraries we use and recommend one" --review light`. Scouts read the code and the web, and the `facts` lens checks every claim has a source.
 - **Files and automation:** `hive "Summarize every PDF in ~/reports/2026 into ~/reports/2026/summary.md"`. The `scope` lens checks nothing else was changed or deleted.
@@ -298,7 +298,7 @@ The dashboard keeps running after you close the terminal, until `hive dashboard 
 
 | Page | Shows |
 |---|---|
-| **Live** | The running session started by `hive` (headless runs too): the Queen's latest message, each brief as a card (status, return count, Done when, and the full brief and report), the review lenses, checks and cost. Updates in real time. |
+| **Live** | The running session started by `hive` (headless runs too): the Queen's latest message, each brief as a card (status, return count, Check, and the full brief and report), the review lenses, checks and cost. Updates in real time. |
 | **Runs** | Every run across projects, filterable by project, Queen and result. Click one for its full timeline. |
 | **Run page** | The bee tree, a comparison bar chart (hive vs ⚖️ measured and ≈ estimated models), tokens and cost by stage, acceptance results, review counts, timeline, and **Export as HTML**, a single offline file you can share. |
 | **Compare** | Cost per run against "Queen alone" over time, and per-Queen averages (cost, pass rate, saving). |

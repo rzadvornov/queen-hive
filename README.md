@@ -17,7 +17,7 @@ hive "Fix the failing tests in ~/projects/api"
 
 ## What it adds to a plain agent
 
-- **Checks that aren't on trust.** Every brief comes with a runnable *Done when*, and the Queen re-runs it herself; a failing brief goes back with the error, at most 3 times, then she asks you.
+- **Checks that aren't on trust.** Every brief comes with a runnable *Check*, and the Queen re-runs it herself; a failing brief goes back with the error, at most 3 times, then she asks you.
 - **An independent review on record:** reviewer bees that never see the builders' reports check the work from separate lenses (goal, correctness, tests, architecture, security …), and the Queen triages every finding.
 - **Guards that are enforced, not requested:** hooks block edits to protected paths (your acceptance tests), keep scouts and reviewers read-only, and stop bees from changing the hive's own rules.
 - **Cost and history you can see:** tokens and cost per stage, against single models (estimated, or measured side by side with `--compare`), a live dashboard and a run history.
@@ -241,7 +241,7 @@ Your own `~/.codex` and `~/.gemini` are never edited. GPT and Gemini prices come
 - **Runs in the CLI itself:** `hive` opens Claude Code, Codex or the Gemini CLI with the Queen's rules, the bees, the hooks and the skills loaded, then reports and records each job when you exit. Scripts and CI get a headless mode (`--headless`). In Claude Code there's also a `/queen-hive:hive` plugin command.
 - **👑 and 🐝 in the chat:** on every provider the Queen starts her messages with 👑 and names bees with their icon (🔎 scout, 🔨 builder, 🧐 reviewer), and bees start their reports with `🐝 <brief ID>`. The Gemini CLI shows bees as "🔎 Scout bee" and so on; Codex as "Scout bee" (it allows no emoji in names).
 - **Autonomy modes:** `plan` (you approve the briefs), `auto`, or `ask` (risky actions need a y/n).
-- **Briefs with "Done when":** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
+- **Briefs with a Check:** every brief comes with a runnable check. The Queen re-runs each check herself and returns a brief at most 3 times before asking you.
 - **Independent review:** reviewer bees check the finished work from separate lenses (goal, correctness, tests, architecture, performance, rules, security), or only goal and tests with `--review light` (the default for a Sonnet 5.5 Queen). They don't see the builders' reports. `hive review` runs the same review on any diff, branch or PR.
 - **Protected paths:** for example your acceptance tests. A hook blocks file edits to them, and shell writes as far as a parse of the command can tell.
 - **Memory outside your project:** kept in `~/.hive/projects/…`. After each job, a retro (`waggle`) proposes rule fixes and applies only those you approve. Skip it with `--no-waggle`.

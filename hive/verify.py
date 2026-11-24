@@ -26,7 +26,8 @@ def acceptance_commands(explicit: list[str], summary: dict | None, profile_comma
     """--done wins; else the Queen's final checks plus the profile's test command, which always runs when there is one."""
     if explicit:
         return explicit
-    from_queen = [c for c in (summary or {}).get("done_when", []) if isinstance(c, str) and c.strip() and "<" not in c]
+    listed = (summary or {}).get("checks") or (summary or {}).get("done_when") or []   # "done_when" in older runs
+    from_queen = [c for c in listed if isinstance(c, str) and c.strip() and "<" not in c]
     profile = [profile_commands["test"]] if profile_commands.get("test") else []
     return list(dict.fromkeys(from_queen + profile))
 

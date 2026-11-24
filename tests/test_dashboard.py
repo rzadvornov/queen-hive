@@ -16,7 +16,7 @@ def make_run(root, finished: bool):
         {"ts": now, "kind": "run_start", "goal": "add combo", "queen": "opus-5.5", "workers": "haiku-5.5", "mode": "auto",
          "folders": [str(root)]},
         {"ts": now + 1, "kind": "dispatch", "id": "a1", "label": "B1", "agent": "queen-hive:builder", "stage": "build",
-         "description": "B1 combo", "prompt": "Goal: x\nDone when: npm test"},
+         "description": "B1 combo", "prompt": "Goal: x\nCheck: npm test"},
     ]
     (run_dir / "events.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
     if finished:

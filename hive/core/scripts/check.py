@@ -1,4 +1,4 @@
-"""Run a Done-when command and print only its verdict and the last lines of its output.
+"""Run a brief's Check command and print only its verdict and the last lines of its output.
 
     python3 check.py "npm test"            # PASS · exit 0 · 4.2s   + the last 5 lines
     python3 check.py --lines 15 "pytest"   # more of the output, e.g. to write a fix brief

@@ -57,12 +57,14 @@ def test_headless_event_lines():
 
 
 def test_summary_and_acceptance_priority():
-    text = 'Done!\n```hive-summary\n{"done_when": ["npm test", "<placeholder>", "pytest"], "status": "done"}\n```'
+    text = 'Done!\n```hive-summary\n{"checks": ["npm test", "<placeholder>", "pytest"], "status": "done"}\n```'
     summary = verify.parse_summary(text)
     assert summary["status"] == "done" and verify.strip_summary(text) == "Done!"
     assert verify.acceptance_commands(["make check"], summary, {"test": "pytest"}) == ["make check"]
     assert verify.acceptance_commands([], summary, {"test": "pytest"}) == ["npm test", "pytest"]   # profile test always, once
     assert verify.acceptance_commands([], None, {"test": "pytest"}) == ["pytest"]
+    older = verify.parse_summary('```hive-summary\n{"done_when": ["npm test"], "status": "done"}\n```')
+    assert verify.acceptance_commands([], older, {}) == ["npm test"]                                # runs from before the rename
     assert verify.parse_summary("no block") is None
 
 

@@ -9,7 +9,7 @@ import pytest
 
 from hive import SCRIPTS_DIR, memory, models, portable, providers, stats
 
-SUMMARY = '```hive-summary\n{"done_when": ["test -f hello.txt"], "status": "done"}\n```'
+SUMMARY = '```hive-summary\n{"checks": ["test -f hello.txt"], "status": "done"}\n```'
 
 
 @pytest.fixture
@@ -302,7 +302,7 @@ def test_headless_run_in_codex(tmp_path, fake_bin, monkeypatch, capsys):
     assert done.value.code == 0, capsys.readouterr().out
     record = stats.load_runs(memory.all_projects())[-1]
     assert record["provider"] == "gpt" and record["queen"]["key"] == "gpt-5.5"
-    assert record["acceptance"]["passed"] is True                       # the Queen's done_when ran here
+    assert record["acceptance"]["passed"] is True                       # the Queen's checks ran here
     assert [b["label"] for b in record["hive"]["briefs"]] == ["B1"]
     assert record["hive"]["checks"] == [{"command": "cat hello.txt", "ok": True}]
     stages = record["hive"]["by_stage"]

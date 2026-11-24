@@ -93,7 +93,7 @@ def queen_prompt(job: Job, pdir: Path, start: StartPoint | None) -> str:
     if job.mode == "plan":
         present = "with ExitPlanMode" if job.provider == "claude" else "in your reply"
         parts.append(f"- Plan mode: first explore read-only (you may send scouts), then present your plan {present} "
-                     "as the list of briefs, each with its Done when, plus the review lenses you will use. "
+                     "as the list of briefs, each with its Check, plus the review lenses you will use. "
                      "Only after the user approves do you start building.")
     parts.append(memory.run_context(target))
     text = "\n".join(p for p in parts if p)

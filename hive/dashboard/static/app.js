@@ -87,12 +87,12 @@ function beeCard(b) {
   const status = b.status === "reported" ? '<span class="pill ok">reported</span>'
     : b.status === "failed" ? '<span class="pill bad">failed</span>' : '<span class="pill run"><span class="dot live-dot"></span>working</span>';
   const again = b.attempt > 1 ? ` <span class="pill bad">return ${b.attempt - 1}</span>` : "";
-  const doneWhen = (b.prompt || "").split("\n").find((l) => /^done when/i.test(l.trim()));
+  const check = (b.prompt || "").split("\n").find((l) => /^(check|done when):/i.test(l.trim()));   // "Done when" in older runs
   const report = b.reports.length ? `<details><summary>report</summary><pre>${esc(b.reports[b.reports.length - 1])}</pre></details>` : "";
   return `<article class="bee ${b.stage}">
     <header><span class="label">${esc(b.label)}</span><span>${status}${again}</span></header>
     <div class="desc">${esc(b.description.slice(b.label.length).trim())}</div>
-    ${doneWhen ? `<div class="mono muted" style="margin-top:4px">${esc(doneWhen.trim())}</div>` : ""}
+    ${check ? `<div class="mono muted" style="margin-top:4px">${esc(check.trim())}</div>` : ""}
     <details><summary>brief</summary><pre>${esc(b.prompt || "")}</pre></details>${report}
   </article>`;
 }

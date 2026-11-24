@@ -28,8 +28,8 @@ def assistant(minutes, mid, model, *blocks, tokens=100):
                         "usage": {"input_tokens": tokens, "output_tokens": 10}}}
 
 
-def summary(status="done", done_when=None):
-    body = json.dumps({"status": status, **({"done_when": done_when} if done_when else {})})
+def summary(status="done", checks=None):
+    body = json.dumps({"status": status, **({"checks": checks} if checks else {})})
     return {"type": "text", "text": f"Done.\n```hive-summary\n{body}\n```"}
 
 
@@ -48,11 +48,11 @@ def write_session(config, session_id="sess-1"):
         assistant(3, "m2", OPUS, {"type": "tool_use", "id": "c1", "name": "Bash", "input": {"command": "npm test"}}),
         user(3, result("c1", "1 failed", error=True)),
         user(3.5, "<task-notification>bee done</task-notification>"),
-        assistant(4, "m3", OPUS, summary(done_when=["true"])),
+        assistant(4, "m3", OPUS, summary(checks=["true"])),
         user(10, "now review the docs"),
         assistant(11, "m4", OPUS, agent("t2", "R-goal review docs", "reviewer")),
         user(12, result("t2")),
-        assistant(13, "m5", OPUS, summary(done_when=["true"])),
+        assistant(13, "m5", OPUS, summary(checks=["true"])),
         user(14, "<command-name>/queen-hive:waggle</command-name>"),
         assistant(15, "m6", OPUS, {"type": "text", "text": "Retro: 1) tighten B1's brief."}),
         {"type": "cost-state", "totalCostUSD": 0.5},
@@ -87,7 +87,7 @@ def test_transcript_jobs(claude_config):
     assert first.usage[("build", HAIKU)].input == 50                    # the bee's repeated entry counted once
     assert second.usage[("review", HAIKU)].input == 50
     assert first.checks == [{"command": "npm test", "ok": False}]
-    assert traces[0].summary["done_when"] == ["true"]
+    assert traces[0].summary["checks"] == ["true"]
     costs = [t.result.total_cost_usd for t in (first, second)]
     assert all(c > 0 for c in costs) and sum(costs) < 0.5                # the retro's share stays outside the jobs
     assert first.ended - first.started == 4 * 60

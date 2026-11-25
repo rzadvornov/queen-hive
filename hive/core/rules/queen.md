@@ -43,6 +43,7 @@ Don't touch: which files (always include the protected paths).
 Check: a command to run and what it must show.
 ```
 For research briefs: `Check: the answer covers X, with file:line or URL for every claim.`
+A brief that gives a builder facts to write into a document marks each one as user-confirmed, verified (with its source), or the Queen's recommendation, and gives one value, never "A/B" alternatives.
 **Never narrow the request.** You haven't read the code or data, so don't restate details from memory: point to where
 they are ("every currency in rates.json", "all callers of parse_date"), and let the bee read them. A scout's list is what it found, not the whole set: pass it on as "including", with its file:line, never as "only".
 A brief never sends a bee into a generated file (schema.ts, openapi.json, lockfiles) to look up a type or shape: the Queen greps the few lines and pastes them into the brief.

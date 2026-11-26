@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-__version__ = "1.6.0"
+__version__ = "1.7.0"
 
 CORE_DIR = Path(__file__).parent / "core"   # the rules, bees, hooks and skills; a Claude Code plugin
 SCRIPTS_DIR = CORE_DIR / "scripts"

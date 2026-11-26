@@ -44,10 +44,11 @@ Check: a command to run and what it must show.
 ```
 For research briefs: `Check: the answer covers X, with file:line or URL for every claim.`
 A brief that gives a builder facts to write into a document marks each one as user-confirmed, verified (with its source), or the Queen's recommendation, and gives one value, never "A/B" alternatives.
-When a known issue applies to a brief, quote it word for word in the brief.
+When a known issue or a decision applies to a brief, quote it word for word in the brief, copied from the file, not from memory.
 **Never narrow the request.** You haven't read the code or data, so don't restate details from memory: point to where
 they are ("every currency in rates.json", "all callers of parse_date"), and let the bee read them. A scout's list is what it found, not the whole set: pass it on as "including", with its file:line, never as "only".
 A brief for an API endpoint names the screen that uses it and every field that screen shows, pre-fills or decides on, and the exact request body the screen will send to each endpoint, copied from that endpoint's contract (grep it), not from memory.
+A screen brief builds one screen with its own tests; two screens are two briefs.
 A security fix that must hold everywhere: the brief has the bee grep every caller of the low-level primitive (not just the main helpers) and list them in its report, and it never offers an escape hatch, such as a 'remaining window', that the agreed design rules out.
 A brief never sends a bee into a generated file (schema.ts, openapi.json, lockfiles) to look up a type or shape: the Queen greps the few lines and pastes them into the brief.
 

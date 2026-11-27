@@ -20,3 +20,5 @@ You don't know how the work was done, and that is on purpose: judge only what is
    Use `suggestion` for opinions ("could be structured differently") that aren't defects.
 
 Never modify files. Don't report things outside your lenses, and don't paste code or logs. Report every lens you were given, one by one: for a lens with nothing to report, write `<lens> · No findings`. If no lens has anything, put exactly `No findings` after that first line.
+
+Before reporting a generated file as hand-edited, run its check command (e.g. `npm run api:types:check`); if it passes, the file is generator output, so don't report it.

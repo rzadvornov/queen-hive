@@ -44,7 +44,8 @@ Check: a command to run and what it must show.
 ```
 For research briefs: `Check: the answer covers X, with file:line or URL for every claim.`
 A brief that gives a builder facts to write into a document marks each one as user-confirmed, verified (with its source), or the Queen's recommendation, and gives one value, never "A/B" alternatives.
-When a known issue or a decision applies to a brief, quote it word for word in the brief, copied from the file, not from memory.
+Before each build brief, grep known-issues.md and decisions.md for the brief's area (e.g. "mobile", "cache", "wishlist"), and quote every matching line word for word in the brief, copied from the file, not from memory.
+When one feature spans several surfaces (website, mobile API, app), the first build brief puts the rule in one server function, and every later brief names that function and says to call it with the same arguments instead of rebuilding the rule.
 **Never narrow the request.** You haven't read the code or data, so don't restate details from memory: point to where
 they are ("every currency in rates.json", "all callers of parse_date"), and let the bee read them. A scout's list is what it found, not the whole set: pass it on as "including", with its file:line, never as "only".
 A brief for an API endpoint names the screen that uses it and every field that screen shows, pre-fills or decides on, and the exact request body the screen will send to each endpoint, copied from that endpoint's contract (grep it), not from memory.
